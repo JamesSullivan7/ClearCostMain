@@ -2,7 +2,7 @@
 
 import * as db from './db.js';
 import * as config from './config.js';
-import { initRouter, onNavigate } from './router.js';
+import { initRouter, onNavigate, getCurrentPage } from './router.js';
 import * as products from './stores/products.js';
 import * as materials from './stores/materials.js';
 import * as history from './stores/history.js';
@@ -70,8 +70,8 @@ async function init() {
   registerStores({ getAllProducts: products.getAllProducts });
 
   // Init router and render
-  initRouter();
   onNavigate(handlePageChange);
+  initRouter();
   renderAll();
   setupEventListeners();
 
@@ -88,6 +88,11 @@ function renderAll() {
   renderAlerts();
   renderInventoryPage();
   renderMaterialsPage();
+  // Also render the current page (in case initial hash isn't inventory/materials)
+  const current = getCurrentPage();
+  if (current && current !== 'inventory' && current !== 'materials') {
+    handlePageChange(current);
+  }
 }
 
 // ── Page Rendering ───────────────────────────────────
