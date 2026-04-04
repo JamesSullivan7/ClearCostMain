@@ -16,6 +16,7 @@ const SITE_URL = process.env.SITE_URL || 'https://inventory-app-eight-delta.verc
 const PRICE_IDS = {
   pro: process.env.STRIPE_PRICE_PRO || 'price_pro_placeholder',
   business: process.env.STRIPE_PRICE_BUSINESS || 'price_business_placeholder',
+  lifetime: process.env.STRIPE_PRICE_LIFETIME || 'price_lifetime_placeholder',
 };
 
 module.exports = async (req, res) => {
@@ -52,11 +53,13 @@ module.exports = async (req, res) => {
 
 async function handleCreateCheckout(req, res, userId, businessId) {
   try {
-    const { tier } = req.body; // 'pro' or 'business'
+    const { tier } = req.body; // 'pro', 'business', or 'lifetime'
     const priceId = PRICE_IDS[tier];
     if (!priceId || priceId.includes('placeholder')) {
-      return res.status(400).json({ error: 'Stripe not configured yet. Set STRIPE_PRICE_PRO and STRIPE_PRICE_BUSINESS env vars.' });
+      return res.status(400).json({ error: `Stripe not configured yet. Set the STRIPE_PRICE_${tier.toUpperCase()} env var.` });
     }
+
+    const isLifetime = tier === 'lifetime';
 
     const supabase = getServiceClient();
 
@@ -91,10 +94,10 @@ async function handleCreateCheckout(req, res, userId, businessId) {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      mode: 'subscription',
+      mode: isLifetime ? 'payment' : 'subscription',
       success_url: `${SITE_URL}/#settings?billing=success`,
       cancel_url: `${SITE_URL}/#settings?billing=cancelled`,
-      metadata: { business_id: businessId },
+      metadata: { business_id: businessId, tier: tier },
     });
 
     return res.status(200).json({ url: session.url });
@@ -179,8 +182,21 @@ async function handleWebhook(req, res) {
       case 'checkout.session.completed': {
         const session = event.data.object;
         const businessId = session.metadata?.business_id;
-        if (businessId && session.subscription) {
-          // Fetch subscription to get the price/tier
+        if (!businessId) break;
+
+        if (session.mode === 'payment') {
+          // One-time payment (lifetime)
+          const tier = session.metadata?.tier || 'lifetime';
+          await supabase
+            .from('businesses')
+            .update({
+              subscription_tier: tier,
+              subscription_status: 'active',
+              stripe_customer_id: session.customer,
+            })
+            .eq('id', businessId);
+        } else if (session.subscription) {
+          // Recurring subscription
           const subscription = await stripe.subscriptions.retrieve(session.subscription);
           const priceId = subscription.items.data[0]?.price?.id;
           const tier = priceId === PRICE_IDS.business ? 'business'

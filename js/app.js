@@ -18,7 +18,7 @@ import { renderAlerts } from './ui/alerts.js';
 import { renderProductGrid, renderMaterialGrid } from './ui/grid.js';
 import { renderHistoryTable } from './ui/tables.js';
 import { showFormModal, escHtml } from './ui/modals.js';
-import { toast } from './ui/toast.js';
+import { toast, showLoading, hideLoading } from './ui/toast.js';
 import { getProductForecasts, getMaterialForecasts } from './services/forecasting.js';
 import { detectReorderNeeded, generatePurchaseOrders, formatPOEmail } from './services/auto-order.js';
 import * as expenses from './stores/expenses.js';
@@ -31,6 +31,7 @@ import { renderQuickBooksSection } from './ui/quickbooks.js';
 import {
   initSupabase, getSession, signUp, signIn, signOut,
   getBusinessProfile, getCachedBusiness, isAuthenticated,
+  resetPassword, getSubscriptionTier,
 } from './supabase.js';
 import { renderPricingPage, renderBillingSection, createCheckoutSession, openBillingPortal, getSubscriptionStatus } from './ui/pricing.js';
 
@@ -61,6 +62,8 @@ async function init() {
 }
 
 async function loadApp() {
+  showLoading('Loading your business...');
+
   // Hide login overlay if visible
   const loginOverlay = document.getElementById('login-overlay');
   if (loginOverlay) loginOverlay.remove();
@@ -110,6 +113,7 @@ async function loadApp() {
   initRouter();
   renderAll();
   setupEventListeners();
+  hideLoading();
 
   // Register service worker
   if ('serviceWorker' in navigator) {
@@ -143,7 +147,19 @@ function showLoginPage() {
         </div>
         <div id="login-error" class="login-error" style="display:none"></div>
         <button class="login-btn login-btn-primary" id="btn-login">Log In</button>
-        <p class="login-switch">Don't have an account? <a href="#" id="show-signup">Sign Up</a></p>
+        <p class="login-switch" style="margin-bottom:8px;">Don't have an account? <a href="#" id="show-signup">Sign Up</a></p>
+        <p class="login-switch"><a href="#" id="show-reset">Forgot Password?</a></p>
+      </div>
+
+      <div id="reset-form" style="display:none">
+        <div class="login-form-group">
+          <label>Email</label>
+          <input type="email" id="reset-email" placeholder="you@business.com" />
+        </div>
+        <div id="reset-error" class="login-error" style="display:none"></div>
+        <div id="reset-success" style="display:none;background:rgba(126,200,154,0.1);border:1px solid var(--success,#7ec89a);color:var(--success,#7ec89a);padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;"></div>
+        <button class="login-btn login-btn-primary" id="btn-reset">Send Reset Link</button>
+        <p class="login-switch"><a href="#" id="show-login-from-reset">Back to Log In</a></p>
       </div>
 
       <div id="signup-form" style="display:none">
@@ -172,6 +188,7 @@ function showLoginPage() {
         <div id="signup-error" class="login-error" style="display:none"></div>
         <button class="login-btn login-btn-primary" id="btn-signup">Create Account</button>
         <p class="login-switch">Already have an account? <a href="#" id="show-login">Log In</a></p>
+        <p class="login-legal">By signing up, you agree to our <a href="#terms">Terms</a> and <a href="#privacy">Privacy Policy</a></p>
       </div>
     </div>
   `;
@@ -188,7 +205,57 @@ function showLoginPage() {
   document.getElementById('show-login')?.addEventListener('click', (e) => {
     e.preventDefault();
     document.getElementById('signup-form').style.display = 'none';
+    document.getElementById('reset-form').style.display = 'none';
     document.getElementById('login-form').style.display = 'block';
+  });
+
+  document.getElementById('show-reset')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('signup-form').style.display = 'none';
+    document.getElementById('reset-form').style.display = 'block';
+    document.getElementById('reset-email')?.focus();
+  });
+
+  document.getElementById('show-login-from-reset')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('reset-form').style.display = 'none';
+    document.getElementById('login-form').style.display = 'block';
+  });
+
+  // Reset password handler
+  document.getElementById('btn-reset')?.addEventListener('click', async () => {
+    const email = document.getElementById('reset-email').value.trim();
+    const errorEl = document.getElementById('reset-error');
+    const successEl = document.getElementById('reset-success');
+
+    if (!email) {
+      errorEl.textContent = 'Please enter your email address';
+      errorEl.style.display = 'block';
+      successEl.style.display = 'none';
+      return;
+    }
+
+    try {
+      errorEl.style.display = 'none';
+      successEl.style.display = 'none';
+      document.getElementById('btn-reset').textContent = 'Sending...';
+      document.getElementById('btn-reset').disabled = true;
+
+      await resetPassword(email);
+      successEl.textContent = 'Password reset link sent! Check your email.';
+      successEl.style.display = 'block';
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = 'block';
+    } finally {
+      document.getElementById('btn-reset').textContent = 'Send Reset Link';
+      document.getElementById('btn-reset').disabled = false;
+    }
+  });
+
+  document.getElementById('reset-email')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btn-reset')?.click();
   });
 
   // Login handler
@@ -300,6 +367,8 @@ function handlePageChange(page) {
   }
   else if (page === 'pricing') renderPricingPageWrapper();
   else if (page === 'settings') renderSettingsPage();
+  else if (page === 'terms') renderTermsPage();
+  else if (page === 'privacy') renderPrivacyPage();
 }
 
 function renderInventoryPage() {
@@ -1185,13 +1254,25 @@ async function handleMainClick(e) {
       showRestockMaterialModal(id);
       break;
 
-    case 'add-product':
+    case 'add-product': {
+      const tier = getSubscriptionTier();
+      if (tier === 'free' && products.getAllProducts().length >= 25) {
+        toast('Free plan limited to 25 products. Upgrade to Pro for unlimited.', 'warning');
+        break;
+      }
       showAddProductModal();
       break;
+    }
 
-    case 'add-material':
+    case 'add-material': {
+      const tier = getSubscriptionTier();
+      if (tier === 'free' && materials.getAllMaterials().length >= 50) {
+        toast('Free plan limited to 50 materials. Upgrade to Pro for unlimited.', 'warning');
+        break;
+      }
       showAddMaterialModal();
       break;
+    }
 
     case 'add-supplier':
       showAddSupplierModal();
@@ -1430,6 +1511,10 @@ async function handleMainClick(e) {
 
     // ── Plaid Actions ──
     case 'plaid-connect': {
+      if (getSubscriptionTier() === 'free') {
+        toast('Upgrade to Pro to connect bank accounts.', 'warning');
+        break;
+      }
       try {
         toast('Opening bank connection...', 'info');
         const result = await openPlaidLink();
@@ -1520,9 +1605,15 @@ async function handleMainClick(e) {
       break;
     }
 
-    case 'qb-connect':
+    case 'qb-connect': {
+      const qbTier = getSubscriptionTier();
+      if (qbTier !== 'business' && qbTier !== 'lifetime') {
+        toast('Upgrade to Business to connect QuickBooks.', 'warning');
+        break;
+      }
       connectQuickBooks();
       break;
+    }
 
     case 'qb-disconnect':
       if (!confirm('Disconnect from QuickBooks? Your local data will not be affected.')) break;
@@ -1588,6 +1679,76 @@ async function handleMainClick(e) {
 
 let _qbStatus = null;
 let _qbReport = null;
+
+// ── Legal Pages ─────────────────────────────────────
+
+function renderTermsPage() {
+  const el = document.getElementById('page-terms');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="settings-section">
+      <h2 style="margin-bottom:16px;">Terms of Service</h2>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px;">Last updated: April 2026</p>
+
+      <h4 style="margin:16px 0 8px;">1. Acceptance of Terms</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">By accessing and using Inventory Manager ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, please do not use the Service.</p>
+
+      <h4 style="margin:16px 0 8px;">2. Description of Service</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">Inventory Manager is a cloud-based inventory management platform. We provide tools for tracking products, materials, production, and business expenses. Features vary by subscription tier.</p>
+
+      <h4 style="margin:16px 0 8px;">3. Accounts</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must notify us immediately of any unauthorized use.</p>
+
+      <h4 style="margin:16px 0 8px;">4. Payments & Billing</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">Paid plans are billed in advance on a monthly basis. Refunds are handled on a case-by-case basis. You may cancel your subscription at any time; access continues until the end of your billing period.</p>
+
+      <h4 style="margin:16px 0 8px;">5. Data Ownership</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">You retain all rights to the data you enter into the Service. We do not claim ownership of your business data. You may export your data at any time.</p>
+
+      <h4 style="margin:16px 0 8px;">6. Limitation of Liability</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">The Service is provided "as is" without warranties of any kind. We are not liable for any indirect, incidental, or consequential damages arising from your use of the Service.</p>
+
+      <h4 style="margin:16px 0 8px;">7. Changes to Terms</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">We reserve the right to modify these terms at any time. Continued use of the Service after changes constitutes acceptance of the updated terms.</p>
+
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-top:24px;">Questions? Contact us at support@inventorymanager.app</p>
+    </div>
+  `;
+}
+
+function renderPrivacyPage() {
+  const el = document.getElementById('page-privacy');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="settings-section">
+      <h2 style="margin-bottom:16px;">Privacy Policy</h2>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px;">Last updated: April 2026</p>
+
+      <h4 style="margin:16px 0 8px;">1. Information We Collect</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">We collect information you provide directly: email address, business name, and inventory data you enter. We also collect basic usage data (page views, feature usage) to improve the Service.</p>
+
+      <h4 style="margin:16px 0 8px;">2. How We Use Your Information</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">Your data is used to provide and improve the Service, process payments, send important account notifications, and provide customer support.</p>
+
+      <h4 style="margin:16px 0 8px;">3. Data Storage & Security</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">Your data is stored securely using industry-standard encryption. We use Supabase for database hosting and Stripe for payment processing. We do not sell your data to third parties.</p>
+
+      <h4 style="margin:16px 0 8px;">4. Third-Party Services</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">We integrate with third-party services (Stripe, Plaid, QuickBooks) to provide functionality. These services have their own privacy policies. We only share the minimum data necessary for integration.</p>
+
+      <h4 style="margin:16px 0 8px;">5. Data Retention</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">We retain your data for as long as your account is active. Upon account deletion, your data will be permanently removed within 30 days.</p>
+
+      <h4 style="margin:16px 0 8px;">6. Your Rights</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">You may access, export, or delete your data at any time through the Settings page. You may request complete account deletion by contacting support.</p>
+
+      <h4 style="margin:16px 0 8px;">7. Changes to This Policy</h4>
+      <p style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;">We may update this policy from time to time. We will notify you of significant changes via email or an in-app notice.</p>
+
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-top:24px;">Questions? Contact us at privacy@inventorymanager.app</p>
+    </div>
+  `;
+}
 
 // ── Pricing Page ────────────────────────────────────
 

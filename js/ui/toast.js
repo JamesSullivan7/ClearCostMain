@@ -54,6 +54,25 @@ function dismiss(el) {
   el.addEventListener('animationend', () => el.remove());
 }
 
+// ── Loading Overlay ────────────────────────────────────
+
+export function showLoading(message = 'Loading...') {
+  let el = document.getElementById('loading-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'loading-overlay';
+    el.className = 'loading-overlay';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<div class="loading-spinner"></div><div class="loading-text">${message}</div>`;
+  el.style.display = 'flex';
+}
+
+export function hideLoading() {
+  const el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
 // Inject toast animations
 const style = document.createElement('style');
 style.textContent = `

@@ -145,3 +145,19 @@ export function onAuthStateChange(callback) {
 export function isAuthenticated() {
   return !!currentSession;
 }
+
+// ── Password Reset ─────────────────────────────────
+
+export async function resetPassword(email) {
+  if (!client) throw new Error('Supabase not initialized');
+  const { error } = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/#settings',
+  });
+  if (error) throw new Error(error.message);
+}
+
+// ── Subscription Tier ──────────────────────────────
+
+export function getSubscriptionTier() {
+  return currentBusiness?.subscription_tier || 'free';
+}
