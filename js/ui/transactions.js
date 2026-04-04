@@ -40,7 +40,7 @@ export function renderTransactionsPage() {
       </div>
     </div>
 
-    ${renderPlaidSection(_plaidAccounts, _plaidSyncing)}
+    ${(() => { try { return renderPlaidSection(_plaidAccounts, _plaidSyncing); } catch(e) { console.error('Plaid section render error:', e); return ''; } })()}
 
     <div class="cost-summary-row">
       <div class="cost-summary-card profit-positive">

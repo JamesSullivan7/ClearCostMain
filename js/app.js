@@ -105,8 +105,10 @@ function handlePageChange(page) {
   else if (page === 'expenses') renderExpensesPage();
   else if (page === 'costs') renderCostAnalysisPage();
   else if (page === 'transactions') {
-    refreshPlaidAccounts().then(() => renderTransactionsPage());
-    renderTransactionsPage(); // render immediately, then re-render after accounts load
+    try { renderTransactionsPage(); } catch (e) { console.error('Transactions render error:', e); }
+    refreshPlaidAccounts().then(() => {
+      try { renderTransactionsPage(); } catch (e) { console.error('Transactions re-render error:', e); }
+    }).catch(e => console.warn('Plaid accounts fetch failed:', e));
   }
   else if (page === 'settings') renderSettingsPage();
 }
