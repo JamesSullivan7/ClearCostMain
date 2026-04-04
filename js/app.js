@@ -1414,6 +1414,7 @@ function showAddProductModal() {
       { id: 'add-p-qty', label: 'Starting Quantity', type: 'number', placeholder: '0', min: 0 },
       { id: 'add-p-note', label: 'Note (optional)', type: 'text', placeholder: 'e.g. seasonal, bestseller' },
       { id: 'add-p-sell', label: 'Sell Price ($)', type: 'number', placeholder: '0.00', min: 0, step: '0.01' },
+      { id: 'add-p-low', label: 'Low Stock Threshold', type: 'number', placeholder: 'Default: ' + (config.getProfile()?.globalThresholds?.productLow || 10), min: 0 },
       { id: 'add-p-status', label: 'Status', type: 'select', value: 'none', options: [
         { value: 'none', label: 'In Stock' },
         { value: 'needs', label: 'Needs to be Made' },
@@ -1431,6 +1432,7 @@ function showAddProductModal() {
         quantity: qty,
         note: vals['add-p-note'],
         sellPrice,
+        lowThreshold: vals['add-p-low'] ? parseInt(vals['add-p-low']) : null,
         needsMade: vals['add-p-status'] === 'needs',
         inProduction: vals['add-p-status'] === 'production',
       });
@@ -1479,15 +1481,24 @@ function showRestockProductModal(id) {
 function showEditNoteModal(id) {
   const item = products.getProductById(id);
   if (!item) return;
+  const globalThreshold = config.getProfile()?.globalThresholds?.productLow || 10;
   showFormModal({
-    title: 'Edit Note',
+    title: `Edit — ${item.name}`,
     fields: [
       { id: 'edit-note', label: 'Note', type: 'textarea', value: item.note || '', placeholder: 'e.g. seasonal, bestseller' },
+      { id: 'edit-sell', label: 'Sell Price ($)', type: 'number', value: item.sellPrice || '', placeholder: '0.00', min: 0, step: '0.01' },
+      { id: 'edit-low', label: 'Low Stock Threshold', type: 'number', value: item.lowThreshold || '', placeholder: 'Default: ' + globalThreshold, min: 0 },
     ],
     submitLabel: 'Save',
     async onSubmit(vals) {
-      await products.updateProduct(id, { note: vals['edit-note'] });
+      await products.updateProduct(id, {
+        note: vals['edit-note'],
+        sellPrice: vals['edit-sell'] ? parseFloat(vals['edit-sell']) : null,
+        lowThreshold: vals['edit-low'] ? parseInt(vals['edit-low']) : null,
+      });
       renderInventoryPage();
+      renderHeader();
+      renderAlerts();
     },
   });
 }
