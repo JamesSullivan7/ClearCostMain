@@ -13,14 +13,14 @@ import { getFixedExpenses } from '../stores/expenses.js';
  * Opens in same window (will redirect back after auth).
  */
 export function connectQuickBooks() {
-  window.location.href = '/api/quickbooks/connect';
+  window.location.href = '/api/quickbooks/auth?action=connect';
 }
 
 /**
  * Disconnect from QuickBooks.
  */
 export async function disconnectQuickBooks() {
-  const res = await fetch('/api/quickbooks/disconnect', { method: 'POST' });
+  const res = await fetch('/api/quickbooks/auth?action=disconnect', { method: 'POST' });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Failed to disconnect');
@@ -32,7 +32,7 @@ export async function disconnectQuickBooks() {
  * Get QuickBooks connection status.
  */
 export async function getQBStatus() {
-  const res = await fetch('/api/quickbooks/status');
+  const res = await fetch('/api/quickbooks/auth?action=status');
   if (!res.ok) {
     throw new Error('Failed to check QuickBooks status');
   }
@@ -46,7 +46,7 @@ export async function getQBStatus() {
  */
 export async function syncProducts() {
   const products = getAllProducts();
-  const res = await fetch('/api/quickbooks/sync-products', {
+  const res = await fetch('/api/quickbooks/sync?action=products', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ products }),
@@ -63,7 +63,7 @@ export async function syncProducts() {
  */
 export async function syncSuppliers() {
   const suppliers = getAllSuppliers();
-  const res = await fetch('/api/quickbooks/sync-suppliers', {
+  const res = await fetch('/api/quickbooks/sync?action=suppliers', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ suppliers }),
@@ -80,7 +80,7 @@ export async function syncSuppliers() {
  */
 export async function syncExpenses() {
   const expenses = getFixedExpenses();
-  const res = await fetch('/api/quickbooks/sync-expenses', {
+  const res = await fetch('/api/quickbooks/sync?action=expenses', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ expenses }),
@@ -100,7 +100,7 @@ export async function fetchPLReport(startDate, endDate) {
   if (startDate) params.set('start_date', startDate);
   if (endDate) params.set('end_date', endDate);
 
-  const res = await fetch(`/api/quickbooks/fetch-report?${params}`);
+  const res = await fetch(`/api/quickbooks/sync?action=report&${params}`);
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Failed to fetch report');
@@ -112,7 +112,7 @@ export async function fetchPLReport(startDate, endDate) {
  * Fetch Chart of Accounts from QuickBooks.
  */
 export async function fetchAccounts() {
-  const res = await fetch('/api/quickbooks/fetch-accounts');
+  const res = await fetch('/api/quickbooks/sync?action=accounts');
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Failed to fetch accounts');

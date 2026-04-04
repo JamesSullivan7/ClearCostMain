@@ -1,5 +1,5 @@
 // Shared Plaid API client configuration
-// Used by all /api/plaid/* serverless functions
+// Used by /api/plaid.js serverless function
 
 const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 

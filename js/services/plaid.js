@@ -12,7 +12,7 @@ import { importPlaidTransactions } from '../stores/transactions.js';
  */
 export async function openPlaidLink() {
   // Step 1: Get a link token from our backend
-  const tokenRes = await fetch('/api/plaid/link-token', { method: 'POST' });
+  const tokenRes = await fetch('/api/plaid?action=link-token', { method: 'POST' });
   if (!tokenRes.ok) {
     const err = await tokenRes.json();
     throw new Error(err.detail || 'Failed to create link token');
@@ -31,7 +31,7 @@ export async function openPlaidLink() {
       onSuccess: async (publicToken, metadata) => {
         try {
           // Step 3: Exchange public token for access token (server-side)
-          const exchangeRes = await fetch('/api/plaid/exchange', {
+          const exchangeRes = await fetch('/api/plaid?action=exchange', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ public_token: publicToken }),
@@ -65,7 +65,7 @@ export async function openPlaidLink() {
  * Returns { accounts: [...] }
  */
 export async function getLinkedAccounts() {
-  const res = await fetch('/api/plaid/accounts');
+  const res = await fetch('/api/plaid?action=accounts');
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.detail || 'Failed to fetch accounts');
@@ -81,7 +81,7 @@ export async function getLinkedAccounts() {
  * Returns { addedCount, modifiedCount, removedCount }
  */
 export async function syncTransactions(itemId) {
-  const res = await fetch('/api/plaid/sync', {
+  const res = await fetch('/api/plaid?action=sync', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ item_id: itemId }),
@@ -130,7 +130,7 @@ export async function syncAllAccounts() {
  * Unlink a bank account.
  */
 export async function removeAccount(itemId) {
-  const res = await fetch('/api/plaid/remove', {
+  const res = await fetch('/api/plaid?action=remove', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ item_id: itemId }),
