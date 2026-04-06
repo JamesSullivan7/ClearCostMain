@@ -85,6 +85,17 @@ async function loadApp() {
     });
   }
 
+  // Always sync business name from cloud (overrides stale local data)
+  if (bizProfile && config.hasProfile()) {
+    const localProfile = config.getProfile();
+    if (localProfile.name !== bizProfile.name || localProfile.type !== (bizProfile.type || 'general')) {
+      await config.saveProfile({
+        name: bizProfile.name,
+        type: bizProfile.type || localProfile.type,
+      });
+    }
+  }
+
   // Check if we need setup wizard (first time on this device)
   if (!config.hasProfile()) {
     showSetupWizard();
