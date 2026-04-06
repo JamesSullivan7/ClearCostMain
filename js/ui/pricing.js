@@ -56,20 +56,6 @@ export function renderPricingPage(currentTier = 'free', status = 'active') {
       cta: currentTier === 'business' ? 'Current Plan' : 'Upgrade to Business',
       current: currentTier === 'business',
     },
-    {
-      id: 'lifetime',
-      name: 'Lifetime',
-      price: '$299',
-      period: 'one-time',
-      features: [
-        'Everything in Business',
-        'Pay once, use forever',
-        'All future updates included',
-        'No recurring charges',
-      ],
-      cta: currentTier === 'lifetime' ? 'Current Plan' : 'Buy Lifetime Access',
-      current: currentTier === 'lifetime',
-    },
   ];
 
   let html = `

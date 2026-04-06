@@ -293,16 +293,6 @@ function showLandingPage() {
             </ul>
             <a href="#get-started" class="landing-btn-secondary landing-btn-block">Start Free Trial</a>
           </div>
-          <div class="landing-pricing-card">
-            <h3>Lifetime</h3>
-            <div class="landing-price">$299<span> once</span></div>
-            <ul>
-              <li>Everything forever</li>
-              <li>No recurring charges</li>
-              <li>All future updates</li>
-            </ul>
-            <a href="#get-started" class="landing-btn-secondary landing-btn-block">Buy Now</a>
-          </div>
         </div>
       </div>
     </section>
