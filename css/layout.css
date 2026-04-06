@@ -383,8 +383,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 24px; }
   }
 
   .sidebar .sidebar-spacer {
-    flex: 0;
-    min-height: 12px;
+    display: none;
   }
 
   .sidebar .tab {
