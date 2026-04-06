@@ -53,7 +53,7 @@ async function init() {
 
   if (!session) {
     // No session — show login page
-    showLoginPage();
+    showLandingPage();
     return;
   }
 
@@ -66,9 +66,9 @@ async function loadApp() {
     showLoading('Loading your business...');
   } catch(e) {}
 
-  // Hide login overlay if visible
-  const loginOverlay = document.getElementById('login-overlay');
-  if (loginOverlay) loginOverlay.remove();
+  // Hide landing overlay if visible
+  const landingOverlay = document.getElementById('landing-overlay');
+  if (landingOverlay) landingOverlay.remove();
 
   await db.openDB();
 
@@ -136,82 +136,304 @@ async function loadApp() {
 
 // ── Login / Signup Page ─────────────────────────────
 
-function showLoginPage() {
+function showLandingPage() {
   // Remove any existing overlay
-  document.getElementById('login-overlay')?.remove();
+  document.getElementById('landing-overlay')?.remove();
 
   const overlay = document.createElement('div');
-  overlay.id = 'login-overlay';
-  overlay.className = 'login-overlay';
+  overlay.id = 'landing-overlay';
+  overlay.className = 'landing-page';
 
   overlay.innerHTML = `
-    <div class="login-card">
-      <h1 class="login-brand">Inventory Manager</h1>
-      <p class="login-subtitle">Business management made simple</p>
-
-      <div id="login-form">
-        <div class="login-form-group">
-          <label>Email</label>
-          <input type="email" id="login-email" placeholder="you@business.com" />
+    <!-- ── Navigation ── -->
+    <nav class="landing-nav">
+      <div class="landing-nav-inner">
+        <div class="landing-nav-brand">ClearCost</div>
+        <div class="landing-nav-links">
+          <a href="#features" class="landing-nav-link">Features</a>
+          <a href="#pricing" class="landing-nav-link">Pricing</a>
+          <a href="#how-it-works" class="landing-nav-link">How It Works</a>
         </div>
-        <div class="login-form-group">
-          <label>Password</label>
-          <input type="password" id="login-password" placeholder="Your password" />
+        <div class="landing-nav-actions">
+          <button class="landing-btn-secondary" id="nav-login-btn">Log In</button>
+          <a href="#get-started" class="landing-btn-primary landing-nav-cta">Start Free</a>
         </div>
-        <div id="login-error" class="login-error" style="display:none"></div>
-        <button class="login-btn login-btn-primary" id="btn-login">Log In</button>
-        <p class="login-switch" style="margin-bottom:8px;">Don't have an account? <a href="#" id="show-signup">Sign Up</a></p>
-        <p class="login-switch"><a href="#" id="show-reset">Forgot Password?</a></p>
+        <button class="landing-mobile-toggle" id="landing-mobile-toggle" aria-label="Menu">&#9776;</button>
       </div>
-
-      <div id="reset-form" style="display:none">
-        <div class="login-form-group">
-          <label>Email</label>
-          <input type="email" id="reset-email" placeholder="you@business.com" />
-        </div>
-        <div id="reset-error" class="login-error" style="display:none"></div>
-        <div id="reset-success" style="display:none;background:rgba(126,200,154,0.1);border:1px solid var(--success,#7ec89a);color:var(--success,#7ec89a);padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;"></div>
-        <button class="login-btn login-btn-primary" id="btn-reset">Send Reset Link</button>
-        <p class="login-switch"><a href="#" id="show-login-from-reset">Back to Log In</a></p>
+      <div class="landing-mobile-menu" id="landing-mobile-menu">
+        <a href="#features" class="landing-nav-link">Features</a>
+        <a href="#pricing" class="landing-nav-link">Pricing</a>
+        <a href="#how-it-works" class="landing-nav-link">How It Works</a>
+        <button class="landing-btn-secondary" id="nav-login-btn-mobile">Log In</button>
+        <a href="#get-started" class="landing-btn-primary" style="text-align:center;">Start Free</a>
       </div>
+    </nav>
 
-      <div id="signup-form" style="display:none">
-        <div class="login-form-group">
-          <label>Business Name</label>
-          <input type="text" id="signup-biz-name" placeholder="e.g. Stone & Wick Co." />
+    <!-- ── Hero ── -->
+    <section class="landing-hero">
+      <div class="landing-container">
+        <h1 class="landing-hero-headline">Know Your True Cost.<br>See Your Real Profit.</h1>
+        <p class="landing-hero-sub">The all-in-one inventory and cost management platform built for small product businesses. Track materials, analyze costs, and see exactly how much you make on every product.</p>
+        <div class="landing-hero-actions">
+          <a href="#get-started" class="landing-btn-primary landing-btn-lg">Start Free &mdash; No Credit Card Required</a>
+          <a href="#how-it-works" class="landing-btn-secondary landing-btn-lg">See How It Works</a>
         </div>
-        <div class="login-form-group">
-          <label>Email</label>
-          <input type="email" id="signup-email" placeholder="you@business.com" />
-        </div>
-        <div class="login-form-group">
-          <label>Password</label>
-          <input type="password" id="signup-password" placeholder="Min 6 characters" />
-        </div>
-        <div class="login-form-group">
-          <label>Business Type</label>
-          <select id="signup-biz-type">
-            <option value="general">General</option>
-            <option value="candles">Candles</option>
-            <option value="bakery">Bakery</option>
-            <option value="retail">Retail</option>
-            <option value="crafts">Crafts</option>
-          </select>
-        </div>
-        <div id="signup-error" class="login-error" style="display:none"></div>
-        <button class="login-btn login-btn-primary" id="btn-signup">Create Account</button>
-        <p class="login-switch">Already have an account? <a href="#" id="show-login">Log In</a></p>
-        <p class="login-legal">By signing up, you agree to our <a href="#terms">Terms</a> and <a href="#privacy">Privacy Policy</a></p>
       </div>
-    </div>
+    </section>
+
+    <!-- ── Problem ── -->
+    <section class="landing-section landing-problem">
+      <div class="landing-container">
+        <h2 class="landing-section-title">Spreadsheets Can't Tell You This</h2>
+        <div class="landing-pain-points">
+          <div class="landing-pain-card">
+            <span class="landing-pain-icon">?</span>
+            <p>What does each product actually cost to make?</p>
+          </div>
+          <div class="landing-pain-card">
+            <span class="landing-pain-icon">?</span>
+            <p>After rent, fees, and labor &mdash; am I profitable?</p>
+          </div>
+          <div class="landing-pain-card">
+            <span class="landing-pain-icon">?</span>
+            <p>Which products should I make more of?</p>
+          </div>
+        </div>
+        <p class="landing-closing-text">ClearCost answers all three in real time.</p>
+      </div>
+    </section>
+
+    <!-- ── Features ── -->
+    <section class="landing-section" id="features">
+      <div class="landing-container">
+        <h2 class="landing-section-title">Everything You Need to Run Your Business</h2>
+        <div class="landing-features-grid">
+          <div class="landing-feature-card">
+            <div class="landing-feature-icon">&#9881;</div>
+            <h3>Smart Inventory</h3>
+            <p>Track products, materials, recipes, and suppliers. Get low-stock alerts and auto-generate purchase orders.</p>
+          </div>
+          <div class="landing-feature-card">
+            <div class="landing-feature-icon">&#36;</div>
+            <h3>True Cost Analysis</h3>
+            <p>See your real COGS per product: materials + labor + shipping + fees. Know your contribution margin and break-even point.</p>
+          </div>
+          <div class="landing-feature-card">
+            <div class="landing-feature-icon">&#9741;</div>
+            <h3>Bank Connection</h3>
+            <p>Connect your bank and credit cards via Plaid. Transactions import automatically and feed your cost analysis.</p>
+          </div>
+          <div class="landing-feature-card">
+            <div class="landing-feature-icon">&#8644;</div>
+            <h3>QuickBooks Sync</h3>
+            <p>Two-way sync with QuickBooks Online. Push products, suppliers, expenses. Pull P&amp;L reports.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── How It Works ── -->
+    <section class="landing-section landing-section-alt" id="how-it-works">
+      <div class="landing-container">
+        <h2 class="landing-section-title">Up and Running in Minutes</h2>
+        <div class="landing-steps">
+          <div class="landing-step">
+            <div class="landing-step-number">1</div>
+            <h3>Sign Up Free</h3>
+            <p>Create your account in 30 seconds. Pick your business type and we'll set up your workspace.</p>
+          </div>
+          <div class="landing-step">
+            <div class="landing-step-number">2</div>
+            <h3>Add Your Products</h3>
+            <p>Enter your products, materials, and recipes. Set costs and sell prices.</p>
+          </div>
+          <div class="landing-step">
+            <div class="landing-step-number">3</div>
+            <h3>See Your Profit</h3>
+            <p>Instantly see your P&amp;L, COGS per product, and break-even analysis. Know exactly where your money goes.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Pricing ── -->
+    <section class="landing-section" id="pricing">
+      <div class="landing-container">
+        <h2 class="landing-section-title">Simple, Transparent Pricing</h2>
+        <p class="landing-section-sub">Start free. Upgrade when you're ready.</p>
+        <div class="landing-pricing-grid">
+          <div class="landing-pricing-card">
+            <h3>Free</h3>
+            <div class="landing-price">$0<span>/mo</span></div>
+            <ul>
+              <li>25 products</li>
+              <li>50 materials</li>
+              <li>Basic cost tracking</li>
+            </ul>
+            <a href="#get-started" class="landing-btn-secondary landing-btn-block">Get Started</a>
+          </div>
+          <div class="landing-pricing-card landing-pricing-popular">
+            <div class="landing-popular-badge">Popular</div>
+            <h3>Pro</h3>
+            <div class="landing-price">$19<span>/mo</span></div>
+            <ul>
+              <li>Unlimited products</li>
+              <li>Plaid banking</li>
+              <li>Full cost analysis</li>
+            </ul>
+            <a href="#get-started" class="landing-btn-primary landing-btn-block">Start Free Trial</a>
+          </div>
+          <div class="landing-pricing-card">
+            <h3>Business</h3>
+            <div class="landing-price">$49<span>/mo</span></div>
+            <ul>
+              <li>Everything in Pro</li>
+              <li>QuickBooks sync</li>
+              <li>Advanced analytics</li>
+            </ul>
+            <a href="#get-started" class="landing-btn-secondary landing-btn-block">Start Free Trial</a>
+          </div>
+          <div class="landing-pricing-card">
+            <h3>Lifetime</h3>
+            <div class="landing-price">$299<span> once</span></div>
+            <ul>
+              <li>Everything forever</li>
+              <li>No recurring charges</li>
+              <li>All future updates</li>
+            </ul>
+            <a href="#get-started" class="landing-btn-secondary landing-btn-block">Buy Now</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CTA ── -->
+    <section class="landing-section landing-cta-section">
+      <div class="landing-container" style="text-align:center;">
+        <h2 class="landing-section-title">Ready to Know Your True Profit?</h2>
+        <a href="#get-started" class="landing-btn-primary landing-btn-lg">Start Free</a>
+      </div>
+    </section>
+
+    <!-- ── Get Started (Signup/Login) ── -->
+    <section class="landing-section" id="get-started">
+      <div class="landing-container" style="max-width:480px;">
+        <div class="login-card" style="margin:0 auto;">
+          <h2 class="login-brand">ClearCost</h2>
+          <p class="login-subtitle">Create your free account</p>
+
+          <div id="signup-form">
+            <div class="login-form-group">
+              <label>Business Name</label>
+              <input type="text" id="signup-biz-name" placeholder="e.g. Stone & Wick Co." />
+            </div>
+            <div class="login-form-group">
+              <label>Email</label>
+              <input type="email" id="signup-email" placeholder="you@business.com" />
+            </div>
+            <div class="login-form-group">
+              <label>Password</label>
+              <input type="password" id="signup-password" placeholder="Min 6 characters" />
+            </div>
+            <div class="login-form-group">
+              <label>Business Type</label>
+              <select id="signup-biz-type">
+                <option value="general">General</option>
+                <option value="candles">Candles</option>
+                <option value="bakery">Bakery</option>
+                <option value="retail">Retail</option>
+                <option value="crafts">Crafts</option>
+              </select>
+            </div>
+            <div id="signup-error" class="login-error" style="display:none"></div>
+            <button class="login-btn login-btn-primary" id="btn-signup">Create Account</button>
+            <p class="login-switch">Already have an account? <a href="#" id="show-login">Log In</a></p>
+            <p class="login-legal">By signing up, you agree to our <a href="#terms">Terms</a> and <a href="#privacy">Privacy Policy</a></p>
+          </div>
+
+          <div id="login-form" style="display:none">
+            <div class="login-form-group">
+              <label>Email</label>
+              <input type="email" id="login-email" placeholder="you@business.com" />
+            </div>
+            <div class="login-form-group">
+              <label>Password</label>
+              <input type="password" id="login-password" placeholder="Your password" />
+            </div>
+            <div id="login-error" class="login-error" style="display:none"></div>
+            <button class="login-btn login-btn-primary" id="btn-login">Log In</button>
+            <p class="login-switch" style="margin-bottom:8px;">Don't have an account? <a href="#" id="show-signup">Sign Up</a></p>
+            <p class="login-switch"><a href="#" id="show-reset">Forgot Password?</a></p>
+          </div>
+
+          <div id="reset-form" style="display:none">
+            <div class="login-form-group">
+              <label>Email</label>
+              <input type="email" id="reset-email" placeholder="you@business.com" />
+            </div>
+            <div id="reset-error" class="login-error" style="display:none"></div>
+            <div id="reset-success" style="display:none;background:rgba(126,200,154,0.1);border:1px solid var(--success,#7ec89a);color:var(--success,#7ec89a);padding:8px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:12px;"></div>
+            <button class="login-btn login-btn-primary" id="btn-reset">Send Reset Link</button>
+            <p class="login-switch"><a href="#" id="show-login-from-reset">Back to Log In</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Footer ── -->
+    <footer class="landing-footer">
+      <div class="landing-container landing-footer-inner">
+        <div class="landing-footer-brand">ClearCost Inventory</div>
+        <div class="landing-footer-links">
+          <a href="#terms">Terms</a>
+          <a href="#privacy">Privacy Policy</a>
+        </div>
+        <div class="landing-footer-copy">&copy; 2025-2026 ClearCost. All rights reserved.</div>
+      </div>
+    </footer>
   `;
 
   document.body.appendChild(overlay);
 
-  // Toggle between login and signup
+  // ── Smooth scroll for all anchor links ──
+  overlay.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const href = link.getAttribute('href');
+      if (href === '#') return;
+      const target = overlay.querySelector(href);
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth' });
+        // Close mobile menu if open
+        document.getElementById('landing-mobile-menu')?.classList.remove('open');
+      }
+    });
+  });
+
+  // ── Mobile menu toggle ──
+  document.getElementById('landing-mobile-toggle')?.addEventListener('click', () => {
+    document.getElementById('landing-mobile-menu')?.classList.toggle('open');
+  });
+
+  // ── Nav Log In buttons scroll to get-started and switch to login form ──
+  const scrollToLogin = (e) => {
+    e.preventDefault();
+    document.getElementById('signup-form').style.display = 'none';
+    document.getElementById('reset-form').style.display = 'none';
+    document.getElementById('login-form').style.display = 'block';
+    const section = overlay.querySelector('#get-started');
+    if (section) section.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('landing-mobile-menu')?.classList.remove('open');
+    setTimeout(() => document.getElementById('login-email')?.focus(), 500);
+  };
+  document.getElementById('nav-login-btn')?.addEventListener('click', scrollToLogin);
+  document.getElementById('nav-login-btn-mobile')?.addEventListener('click', scrollToLogin);
+
+  // ── Toggle between login and signup ──
   document.getElementById('show-signup')?.addEventListener('click', (e) => {
     e.preventDefault();
     document.getElementById('login-form').style.display = 'none';
+    document.getElementById('reset-form').style.display = 'none';
     document.getElementById('signup-form').style.display = 'block';
   });
 
@@ -236,7 +458,7 @@ function showLoginPage() {
     document.getElementById('login-form').style.display = 'block';
   });
 
-  // Reset password handler
+  // ── Reset password handler ──
   document.getElementById('btn-reset')?.addEventListener('click', async () => {
     const email = document.getElementById('reset-email').value.trim();
     const errorEl = document.getElementById('reset-error');
@@ -271,7 +493,7 @@ function showLoginPage() {
     if (e.key === 'Enter') document.getElementById('btn-reset')?.click();
   });
 
-  // Login handler
+  // ── Login handler ──
   document.getElementById('btn-login')?.addEventListener('click', async () => {
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
@@ -298,7 +520,7 @@ function showLoginPage() {
     }
   });
 
-  // Signup handler
+  // ── Signup handler ──
   document.getElementById('btn-signup')?.addEventListener('click', async () => {
     const bizName = document.getElementById('signup-biz-name').value.trim();
     const email = document.getElementById('signup-email').value.trim();
@@ -332,16 +554,13 @@ function showLoginPage() {
     }
   });
 
-  // Enter key handlers
+  // ── Enter key handlers ──
   document.getElementById('login-password')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') document.getElementById('btn-login')?.click();
   });
   document.getElementById('signup-password')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') document.getElementById('btn-signup')?.click();
   });
-
-  // Focus first input
-  setTimeout(() => document.getElementById('login-email')?.focus(), 100);
 }
 
 // ── Render All ───────────────────────────────────────
@@ -2426,7 +2645,7 @@ init().catch(err => {
   console.error('Init failed:', err);
   // If it's a session/auth error, show login page instead of crashing
   if (err.message?.includes('Session expired') || err.message?.includes('401') || err.message?.includes('token') || err.message?.includes('Unauthorized')) {
-    showLoginPage();
+    showLandingPage();
     return;
   }
   document.body.innerHTML = `<div style="padding:40px;text-align:center;color:#e07070;">
