@@ -691,6 +691,12 @@ function renderAll() {
 // ── Page Rendering ───────────────────────────────────
 
 function handlePageChange(page) {
+  // Only show alerts on dashboard, inventory, and materials
+  const alertsEl = document.getElementById('alerts');
+  if (alertsEl) {
+    alertsEl.style.display = ['dashboard', 'inventory', 'materials'].includes(page) ? '' : 'none';
+  }
+
   if (page === 'inventory') renderInventoryPage();
   else if (page === 'materials') renderMaterialsPage();
   else if (page === 'history') renderHistoryPage();
