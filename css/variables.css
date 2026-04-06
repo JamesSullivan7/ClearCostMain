@@ -3,14 +3,14 @@
 
 :root {
   /* Core colors */
-  --bg: #141418;
-  --surface: #1e1e24;
-  --surface2: #28282e;
-  --border: #38383e;
-  --accent: #8a8aff;
-  --accent-dim: #6060c0;
-  --text: #e8e8f0;
-  --text-muted: #8a8a9a;
+  --bg: #0f0d0b;
+  --surface: #1a1714;
+  --surface2: #24201a;
+  --border: #2e2822;
+  --accent: #c8a06a;
+  --accent-dim: #9e7850;
+  --text: #f0e8df;
+  --text-muted: #9a8a78;
 
   /* Status colors */
   --danger: #e07070;
