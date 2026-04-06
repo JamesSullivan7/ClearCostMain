@@ -28,6 +28,7 @@ import { renderTransactionsPage, getTransactionFormFields, setPlaidAccounts, set
 import { openPlaidLink, getLinkedAccounts, syncTransactions, syncAllAccounts, removeAccount } from './services/plaid.js';
 import { connectQuickBooks, disconnectQuickBooks, getQBStatus, syncProducts as qbSyncProducts, syncSuppliers as qbSyncSuppliers, syncExpenses as qbSyncExpenses, fetchPLReport } from './services/quickbooks.js';
 import { renderQuickBooksSection } from './ui/quickbooks.js';
+import { apiUpdateProfile } from './api-client.js';
 import {
   initSupabase, getSession, signUp, signIn, signOut,
   getBusinessProfile, getCachedBusiness, isAuthenticated,
@@ -1227,6 +1228,8 @@ async function saveProfileSettings() {
   if (faviconFile) updates.favicon = faviconFile;
 
   await config.saveProfile(updates);
+  // Sync to cloud
+  try { await apiUpdateProfile({ name: updates.name, product_label: updates.productLabel, product_label_plural: updates.productLabelPlural }); } catch(e) { console.warn('Cloud sync failed:', e); }
   renderHeader();
   config.applyFavicon();
   toast('Profile saved', 'success');
@@ -1248,6 +1251,8 @@ async function saveThemeSettings() {
     mode: document.getElementById('set-dark-mode')?.checked ? 'dark' : 'light',
   };
   await config.saveProfile({ theme });
+  // Sync theme to cloud
+  try { await apiUpdateProfile({ theme }); } catch(e) { console.warn('Cloud theme sync failed:', e); }
   toast('Theme saved', 'success');
 }
 
@@ -1263,6 +1268,7 @@ async function saveThresholds() {
   const productLow = parseInt(document.getElementById('set-product-threshold')?.value) || 10;
   const materialLow = parseInt(document.getElementById('set-material-threshold')?.value) || 50;
   await config.saveProfile({ globalThresholds: { productLow, materialLow } });
+  try { await apiUpdateProfile({ global_thresholds: { productLow, materialLow } }); } catch(e) { console.warn('Cloud threshold sync failed:', e); }
   renderAll();
   toast('Thresholds saved', 'success');
 }
