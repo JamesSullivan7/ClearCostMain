@@ -593,11 +593,17 @@ function showLandingPage() {
 // ── Password Reset Page ─────────────────────────────
 
 function showPasswordResetPage() {
+  // Remove any existing overlays
   document.getElementById('landing-overlay')?.remove();
+
+  // Hide the app completely
+  document.querySelector('header')?.setAttribute('style', 'display:none');
+  document.querySelector('.app-layout')?.setAttribute('style', 'display:none');
+  document.querySelector('.sidebar-toggle')?.setAttribute('style', 'display:none');
 
   const overlay = document.createElement('div');
   overlay.id = 'landing-overlay';
-  overlay.className = 'login-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:var(--bg,#0f0d0b);display:flex;align-items:center;justify-content:center;padding:20px;';
 
   overlay.innerHTML = `
     <div class="login-card">
@@ -615,9 +621,6 @@ function showPasswordResetPage() {
       <div id="reset-error" class="login-error" style="display:none"></div>
       <div id="reset-success" style="display:none;color:var(--success);text-align:center;padding:12px;font-size:0.9rem;"></div>
       <button class="login-btn login-btn-primary" id="btn-reset-password">Update Password</button>
-      <p class="login-switch" style="margin-top:16px;">
-        <a href="#" id="reset-go-to-app">Go to App</a>
-      </p>
     </div>
   `;
 
@@ -647,16 +650,15 @@ function showPasswordResetPage() {
 
       await updatePassword(newPw);
 
-      successEl.textContent = 'Password updated successfully! Redirecting...';
+      successEl.textContent = 'Password updated! Redirecting to login...';
       successEl.style.display = 'block';
       document.getElementById('btn-reset-password').style.display = 'none';
 
-      // Clean up the URL hash and redirect to app
-      setTimeout(() => {
-        window.location.hash = '#dashboard';
-        overlay.remove();
-        loadApp();
-      }, 1500);
+      // Sign out and redirect to landing page so they log in with new password
+      setTimeout(async () => {
+        await signOut();
+        window.location.href = window.location.origin;
+      }, 2000);
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.style.display = 'block';
@@ -667,13 +669,6 @@ function showPasswordResetPage() {
 
   document.getElementById('reset-confirm-password')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') document.getElementById('btn-reset-password')?.click();
-  });
-
-  document.getElementById('reset-go-to-app')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.location.hash = '#dashboard';
-    overlay.remove();
-    loadApp();
   });
 
   setTimeout(() => document.getElementById('reset-new-password')?.focus(), 100);
