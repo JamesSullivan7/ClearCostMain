@@ -34,6 +34,11 @@ import {
   resetPassword, getSubscriptionTier,
 } from './supabase.js';
 import { renderPricingPage, renderBillingSection, createCheckoutSession, openBillingPortal, getSubscriptionStatus } from './ui/pricing.js';
+import {
+  getProductTemplate, getMaterialTemplate, getRecipeTemplate,
+  parseCSV, importProducts, importMaterials, importRecipes,
+  downloadCSV,
+} from './services/csv-import.js';
 
 // ── State ────────────────────────────────────────────
 
@@ -791,7 +796,10 @@ function renderRecipesPage() {
       <div class="toolbar-left">
         <span style="color:var(--text-muted);font-size:0.85rem;">${allRecipes.length} recipe${allRecipes.length !== 1 ? 's' : ''}</span>
       </div>
-      <button class="btn-primary" data-action="add-recipe">+ Add Recipe</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary" data-action="import-recipes-csv">Import CSV</button>
+        <button class="btn-primary" data-action="add-recipe">+ Add Recipe</button>
+      </div>
     </div>
   `;
 
@@ -1675,6 +1683,18 @@ async function handleMainClick(e) {
 
     case 'export-csv':
       exportCSV();
+      break;
+
+    case 'import-products-csv':
+      showImportModal('products');
+      break;
+
+    case 'import-materials-csv':
+      showImportModal('materials');
+      break;
+
+    case 'import-recipes-csv':
+      showImportModal('recipes');
       break;
 
     case 'clear-history':
@@ -2610,6 +2630,136 @@ function showAddTransactionModal(type) {
       renderTransactionsPage();
       toast(`${type === 'income' ? 'Income' : 'Expense'} logged`, 'success');
     },
+  });
+}
+
+// ── CSV Import Modal ─────────────────────────────────
+
+function showImportModal(type) {
+  const labels = {
+    products: 'Products',
+    materials: 'Materials',
+    recipes: 'Recipes',
+  };
+  const label = labels[type] || type;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'import-modal-overlay';
+  overlay.innerHTML = `
+    <div class="import-modal">
+      <div class="import-modal-header">
+        <h3>Import ${label} from CSV</h3>
+        <button class="import-modal-close">&times;</button>
+      </div>
+      <div class="import-modal-body">
+        <p class="import-instructions">
+          Download the CSV template, fill it in with your data, then upload the file to bulk-create ${label.toLowerCase()}.
+          ${type === 'recipes' ? 'Product and material names must match existing items exactly.' : ''}
+        </p>
+        <button class="btn-secondary import-download-btn">Download Template</button>
+        <div class="import-file-area">
+          <label class="import-file-label">
+            <span class="import-file-text">Choose CSV file...</span>
+            <input type="file" accept=".csv" class="import-file-input" />
+          </label>
+        </div>
+        <button class="btn-primary import-run-btn" disabled>Import</button>
+        <div class="import-results"></div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const closeBtn = overlay.querySelector('.import-modal-close');
+  const downloadBtn = overlay.querySelector('.import-download-btn');
+  const fileInput = overlay.querySelector('.import-file-input');
+  const fileText = overlay.querySelector('.import-file-text');
+  const importBtn = overlay.querySelector('.import-run-btn');
+  const resultsDiv = overlay.querySelector('.import-results');
+
+  let selectedFile = null;
+
+  // Close
+  closeBtn.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  // Download template
+  downloadBtn.addEventListener('click', () => {
+    if (type === 'products') downloadCSV(getProductTemplate(), 'products-template.csv');
+    else if (type === 'materials') downloadCSV(getMaterialTemplate(), 'materials-template.csv');
+    else if (type === 'recipes') downloadCSV(getRecipeTemplate(), 'recipes-template.csv');
+  });
+
+  // File selection
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      selectedFile = fileInput.files[0];
+      fileText.textContent = selectedFile.name;
+      importBtn.disabled = false;
+    }
+  });
+
+  // Import
+  importBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    importBtn.disabled = true;
+    importBtn.textContent = 'Importing...';
+    resultsDiv.innerHTML = '';
+
+    try {
+      const text = await selectedFile.text();
+      const records = parseCSV(text);
+
+      if (!records.length) {
+        resultsDiv.innerHTML = '<div class="import-error">No data rows found in CSV.</div>';
+        importBtn.disabled = false;
+        importBtn.textContent = 'Import';
+        return;
+      }
+
+      let result;
+      if (type === 'products') {
+        result = await importProducts(records, products.addProduct.bind(products));
+      } else if (type === 'materials') {
+        result = await importMaterials(records, materials.addMaterial.bind(materials));
+      } else if (type === 'recipes') {
+        const allProds = products.getAllProducts();
+        const allMats = materials.getAllMaterials();
+        result = await importRecipes(records, recipes.addRecipe.bind(recipes), allProds, allMats);
+      }
+
+      let html = `<div class="import-success">Imported ${result.imported} ${label.toLowerCase()} successfully.</div>`;
+      if (result.errors.length) {
+        html += `<div class="import-error">${result.errors.length} error${result.errors.length !== 1 ? 's' : ''}:</div>`;
+        html += '<ul class="import-error-list">';
+        for (const err of result.errors) {
+          html += `<li>Row ${err.row}: ${escHtml(err.error)}</li>`;
+        }
+        html += '</ul>';
+      }
+      resultsDiv.innerHTML = html;
+
+      // Refresh pages
+      if (type === 'products') {
+        renderInventoryPage();
+        renderHeader();
+        renderAlerts();
+      } else if (type === 'materials') {
+        renderMaterialsPage();
+      } else if (type === 'recipes') {
+        renderRecipesPage();
+      }
+
+      toast(`Imported ${result.imported} ${label.toLowerCase()}${result.errors.length ? ` with ${result.errors.length} errors` : ''}`, result.errors.length ? 'warning' : 'success');
+    } catch (err) {
+      resultsDiv.innerHTML = `<div class="import-error">Import failed: ${escHtml(err.message || String(err))}</div>`;
+    }
+
+    importBtn.textContent = 'Import';
+    importBtn.disabled = false;
   });
 }
 

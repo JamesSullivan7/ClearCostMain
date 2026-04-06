@@ -101,6 +101,7 @@
         <input class="search-input" id="search-input" type="text" placeholder="Search..." />
       </div>
       <div style="display:flex;gap:8px">
+        <button class="btn-secondary" data-action="import-products-csv">Import CSV</button>
         <button class="btn-secondary" data-action="export-csv">Export CSV</button>
         <button class="btn-primary" data-action="add-product">+ Add</button>
       </div>
@@ -114,7 +115,10 @@
       <div class="toolbar-left">
         <input class="search-input" id="mat-search" type="text" placeholder="Search materials..." />
       </div>
-      <button class="btn-primary" data-action="add-material">+ Add Material</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary" data-action="import-materials-csv">Import CSV</button>
+        <button class="btn-primary" data-action="add-material">+ Add Material</button>
+      </div>
     </div>
     <div class="mat-grid" id="mat-grid"></div>
   </div>

@@ -1103,3 +1103,84 @@ input[type=checkbox].sw-toggle { width: 17px; height: 17px; accent-color: var(--
 .tier-free { background: var(--surface2); color: var(--text-muted); }
 .tier-pro { background: rgba(138,138,255,0.15); color: var(--accent); }
 .tier-business { background: rgba(80,200,120,0.15); color: var(--success); }
+
+/* ── CSV Import Modal ─────────────────────────────── */
+
+.import-modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+.import-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%; max-width: 460px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+
+.import-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.import-modal-header h3 {
+  margin: 0; font-size: 1rem; font-weight: 600; color: var(--text);
+}
+.import-modal-close {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 1.4rem; cursor: pointer; padding: 0 4px; line-height: 1;
+}
+.import-modal-close:hover { color: var(--text); }
+
+.import-modal-body {
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+.import-instructions {
+  color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin: 0;
+}
+
+.import-download-btn { align-self: flex-start; }
+
+.import-file-area { margin: 4px 0; }
+
+.import-file-label {
+  display: block;
+  background: var(--surface2);
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.import-file-label:hover { border-color: var(--accent-dim); }
+
+.import-file-text {
+  color: var(--text-muted); font-size: 0.85rem;
+}
+
+.import-file-input { display: none; }
+
+.import-run-btn { align-self: flex-start; }
+.import-run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.import-results { margin-top: 4px; }
+
+.import-success {
+  color: var(--success); font-size: 0.88rem; font-weight: 500; margin-bottom: 6px;
+}
+
+.import-error {
+  color: var(--danger); font-size: 0.85rem; font-weight: 500; margin-bottom: 4px;
+}
+
+.import-error-list {
+  list-style: disc; padding-left: 20px; margin: 4px 0 0;
+  font-size: 0.8rem; color: var(--danger); max-height: 140px; overflow-y: auto;
+}
+.import-error-list li { margin-bottom: 2px; }
