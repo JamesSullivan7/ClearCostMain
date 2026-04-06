@@ -56,10 +56,30 @@ async function init() {
 
   // Check if this is a password recovery redirect
   const hash = window.location.hash;
-  if (hash.includes('type=recovery') || hash.includes('type=signup')) {
-    // Supabase puts tokens in the hash — let the client process them
+  const params = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(hash.replace('#', ''));
+  const isRecovery = hash.includes('type=recovery') || params.get('type') === 'recovery' || hashParams.get('type') === 'recovery';
+  const hasError = hash.includes('error=') || params.get('error');
+  const errorDesc = hashParams.get('error_description') || params.get('error_description') || '';
+
+  if (isRecovery || hasError) {
+    // Try to establish session from recovery tokens
     const session = await getSession();
-    if (session && hash.includes('type=recovery')) {
+    if (isRecovery && session) {
+      showPasswordResetPage();
+      return;
+    }
+    if (hasError && errorDesc.includes('expired')) {
+      // Token expired — show landing with error
+      showLandingPage();
+      setTimeout(() => {
+        const errEl = document.getElementById('login-error') || document.getElementById('signup-error');
+        if (errEl) { errEl.textContent = 'Password reset link has expired. Please request a new one.'; errEl.style.display = 'block'; }
+      }, 500);
+      return;
+    }
+    if (isRecovery && !session) {
+      // Recovery token present but session failed — show reset page anyway and let it fail gracefully
       showPasswordResetPage();
       return;
     }

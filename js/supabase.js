@@ -151,7 +151,7 @@ export function isAuthenticated() {
 export async function resetPassword(email) {
   if (!client) throw new Error('Supabase not initialized');
   const { error } = await client.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/#settings',
+    redirectTo: window.location.origin + '/?type=recovery',
   });
   if (error) throw new Error(error.message);
 }
