@@ -32,7 +32,7 @@ import { apiUpdateProfile } from './api-client.js';
 import {
   initSupabase, getSession, signUp, signIn, signOut,
   getBusinessProfile, getCachedBusiness, isAuthenticated,
-  resetPassword, getSubscriptionTier,
+  resetPassword, updatePassword, getSubscriptionTier,
 } from './supabase.js';
 import { renderPricingPage, renderBillingSection, createCheckoutSession, openBillingPortal, getSubscriptionStatus } from './ui/pricing.js';
 import {
@@ -54,11 +54,22 @@ async function init() {
   // Initialize Supabase auth
   initSupabase();
 
+  // Check if this is a password recovery redirect
+  const hash = window.location.hash;
+  if (hash.includes('type=recovery') || hash.includes('type=signup')) {
+    // Supabase puts tokens in the hash — let the client process them
+    const session = await getSession();
+    if (session && hash.includes('type=recovery')) {
+      showPasswordResetPage();
+      return;
+    }
+  }
+
   // Check for existing session
   const session = await getSession();
 
   if (!session) {
-    // No session — show login page
+    // No session — show landing page
     showLandingPage();
     return;
   }
@@ -557,6 +568,95 @@ function showLandingPage() {
   document.getElementById('signup-password')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') document.getElementById('btn-signup')?.click();
   });
+}
+
+// ── Password Reset Page ─────────────────────────────
+
+function showPasswordResetPage() {
+  document.getElementById('landing-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'landing-overlay';
+  overlay.className = 'login-overlay';
+
+  overlay.innerHTML = `
+    <div class="login-card">
+      <h1 class="login-brand">ClearCost</h1>
+      <p class="login-subtitle">Set your new password</p>
+
+      <div class="login-form-group">
+        <label>New Password</label>
+        <input type="password" id="reset-new-password" placeholder="Min 6 characters" />
+      </div>
+      <div class="login-form-group">
+        <label>Confirm Password</label>
+        <input type="password" id="reset-confirm-password" placeholder="Confirm new password" />
+      </div>
+      <div id="reset-error" class="login-error" style="display:none"></div>
+      <div id="reset-success" style="display:none;color:var(--success);text-align:center;padding:12px;font-size:0.9rem;"></div>
+      <button class="login-btn login-btn-primary" id="btn-reset-password">Update Password</button>
+      <p class="login-switch" style="margin-top:16px;">
+        <a href="#" id="reset-go-to-app">Go to App</a>
+      </p>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  document.getElementById('btn-reset-password')?.addEventListener('click', async () => {
+    const newPw = document.getElementById('reset-new-password').value;
+    const confirmPw = document.getElementById('reset-confirm-password').value;
+    const errorEl = document.getElementById('reset-error');
+    const successEl = document.getElementById('reset-success');
+
+    if (!newPw || newPw.length < 6) {
+      errorEl.textContent = 'Password must be at least 6 characters';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (newPw !== confirmPw) {
+      errorEl.textContent = 'Passwords do not match';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      errorEl.style.display = 'none';
+      document.getElementById('btn-reset-password').textContent = 'Updating...';
+      document.getElementById('btn-reset-password').disabled = true;
+
+      await updatePassword(newPw);
+
+      successEl.textContent = 'Password updated successfully! Redirecting...';
+      successEl.style.display = 'block';
+      document.getElementById('btn-reset-password').style.display = 'none';
+
+      // Clean up the URL hash and redirect to app
+      setTimeout(() => {
+        window.location.hash = '#dashboard';
+        overlay.remove();
+        loadApp();
+      }, 1500);
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = 'block';
+      document.getElementById('btn-reset-password').textContent = 'Update Password';
+      document.getElementById('btn-reset-password').disabled = false;
+    }
+  });
+
+  document.getElementById('reset-confirm-password')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btn-reset-password')?.click();
+  });
+
+  document.getElementById('reset-go-to-app')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.hash = '#dashboard';
+    overlay.remove();
+    loadApp();
+  });
+
+  setTimeout(() => document.getElementById('reset-new-password')?.focus(), 100);
 }
 
 // ── Render All ───────────────────────────────────────

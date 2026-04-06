@@ -156,6 +156,14 @@ export async function resetPassword(email) {
   if (error) throw new Error(error.message);
 }
 
+// ── Update Password (after reset link) ──────────────
+
+export async function updatePassword(newPassword) {
+  if (!client) throw new Error('Supabase not initialized');
+  const { error } = await client.auth.updateUser({ password: newPassword });
+  if (error) throw new Error(error.message);
+}
+
 // ── Subscription Tier ──────────────────────────────
 
 export function getSubscriptionTier() {
