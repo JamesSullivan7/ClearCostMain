@@ -741,9 +741,12 @@ html { scroll-behavior: smooth; }
 
 .landing-pricing-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   margin-top: 40px;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .landing-pricing-card {
@@ -867,7 +870,7 @@ html { scroll-behavior: smooth; }
 
 @media (max-width: 1024px) {
   .landing-features-grid { grid-template-columns: repeat(2, 1fr); }
-  .landing-pricing-grid { grid-template-columns: repeat(2, 1fr); }
+  .landing-pricing-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 768px) {
