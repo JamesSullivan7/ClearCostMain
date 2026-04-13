@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="/css/components.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- Analytics: Replace data-domain with your actual domain when going live -->
   <!-- <script defer data-domain="yourdomain.com" src="https://plausible.io/js/script.js"></script> -->
 </head>
@@ -103,6 +104,7 @@
         <input class="search-input" id="search-input" type="text" placeholder="Search..." />
       </div>
       <div style="display:flex;gap:8px">
+        <button class="btn-secondary" data-action="scan-barcode" data-target="product">Scan</button>
         <button class="btn-secondary" data-action="import-products-csv">Import CSV</button>
         <button class="btn-secondary" data-action="export-csv">Export CSV</button>
         <button class="btn-primary" data-action="add-product">+ Add</button>
@@ -118,6 +120,7 @@
         <input class="search-input" id="mat-search" type="text" placeholder="Search materials..." />
       </div>
       <div style="display:flex;gap:8px">
+        <button class="btn-secondary" data-action="scan-barcode" data-target="material">Scan</button>
         <button class="btn-secondary" data-action="import-materials-csv">Import CSV</button>
         <button class="btn-primary" data-action="add-material">+ Add Material</button>
       </div>

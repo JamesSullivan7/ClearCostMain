@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClearCost API Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0d0b;
+      --surface: #1a1714;
+      --surface2: #24201a;
+      --border: #2e2822;
+      --accent: #c8a06a;
+      --accent-dim: #9e7850;
+      --text: #f0e8df;
+      --text-muted: #9a8a78;
+      --danger: #e07070;
+      --success: #7ec89a;
+      --warning: #e0b060;
+      --font-ui: 'Outfit', sans-serif;
+      --font-code: 'Fira Code', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .api-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .api-sidebar {
+      width: 260px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .api-sidebar h2 {
+      padding: 0 20px;
+      font-size: 1.1rem;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .api-sidebar .subtitle {
+      padding: 0 20px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .api-sidebar a {
+      display: block;
+      padding: 8px 20px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+      border-left: 3px solid transparent;
+    }
+
+    .api-sidebar a:hover {
+      color: var(--text);
+      background: var(--surface2);
+      border-left-color: var(--accent);
+    }
+
+    .api-sidebar .nav-section {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent-dim);
+      padding: 16px 20px 6px;
+    }
+
+    /* Main content */
+    .api-main {
+      flex: 1;
+      padding: 40px 60px;
+      max-width: 900px;
+    }
+
+    .api-main h1 {
+      font-size: 2rem;
+      color: var(--text);
+      margin-bottom: 8px;
+      letter-spacing: 0.04em;
+    }
+
+    .api-main > p.lead {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: 40px;
+    }
+
+    h2.section-title {
+      font-size: 1.4rem;
+      color: var(--accent);
+      margin: 48px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      color: var(--text);
+      margin: 28px 0 12px;
+    }
+
+    p { margin-bottom: 12px; color: var(--text-muted); }
+
+    code {
+      font-family: var(--font-code);
+      font-size: 0.82rem;
+      background: var(--surface2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      margin: 12px 0 20px;
+      font-family: var(--font-code);
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: var(--text);
+    }
+
+    .method {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-right: 8px;
+      font-family: var(--font-code);
+    }
+    .method.get { background: #1a3028; color: var(--success); }
+    .method.post { background: #3a2e1a; color: var(--warning); }
+    .method.delete { background: #3a1f1f; color: var(--danger); }
+
+    .endpoint-path {
+      font-family: var(--font-code);
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+
+    .endpoint-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 12px 0 24px;
+    }
+
+    .endpoint-block .endpoint-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+    }
+
+    th {
+      text-align: left;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    td code {
+      color: var(--accent);
+    }
+
+    .badge-store {
+      display: inline-block;
+      font-size: 0.7rem;
+      background: var(--surface2);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-family: var(--font-code);
+      margin: 2px 4px 2px 0;
+    }
+
+    .back-link {
+      display: inline-block;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+    }
+    .back-link:hover { text-decoration: underline; }
+
+    @media (max-width: 768px) {
+      .api-layout { flex-direction: column; }
+      .api-sidebar {
+        width: 100%; height: auto; position: relative;
+        border-right: none; border-bottom: 1px solid var(--border);
+        padding: 16px 0;
+      }
+      .api-main { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="api-layout">
+
+  <nav class="api-sidebar">
+    <h2>ClearCost API</h2>
+    <p class="subtitle">REST API Reference</p>
+
+    <div class="nav-section">Getting Started</div>
+    <a href="#auth">Authentication</a>
+    <a href="#base-url">Base URL</a>
+    <a href="#errors">Error Handling</a>
+
+    <div class="nav-section">Endpoints</div>
+    <a href="#list">List Records</a>
+    <a href="#get">Get Record</a>
+    <a href="#create">Create Record</a>
+    <a href="#update">Update Record</a>
+    <a href="#delete">Delete Record</a>
+    <a href="#upsert">Upsert Record</a>
+    <a href="#batch">Batch Create</a>
+    <a href="#profile">Business Profile</a>
+
+    <div class="nav-section">Stores</div>
+    <a href="#store-products">Products</a>
+    <a href="#store-materials">Materials</a>
+    <a href="#store-recipes">Recipes</a>
+    <a href="#store-suppliers">Suppliers</a>
+    <a href="#store-orders">Orders</a>
+    <a href="#store-locations">Locations</a>
+    <a href="#store-production">Production</a>
+    <a href="#store-expenses">Expenses</a>
+    <a href="#store-history">History</a>
+    <a href="#store-waste">Waste</a>
+    <a href="#store-batches">Batches</a>
+    <a href="#store-transactions">Transactions</a>
+  </nav>
+
+  <main class="api-main">
+    <a href="/" class="back-link">&larr; Back to App</a>
+    <h1>ClearCost API</h1>
+    <p class="lead">A unified REST API for managing your inventory, materials, recipes, and business data. All endpoints use the same base pattern with store-specific parameters.</p>
+
+    <!-- Auth -->
+    <h2 class="section-title" id="auth">Authentication</h2>
+    <p>All requests require a Bearer token in the <code>Authorization</code> header. Obtain a token by signing in through the app; the Supabase access token is used directly.</p>
+    <pre>Authorization: Bearer YOUR_ACCESS_TOKEN
+Content-Type: application/json</pre>
+    <p>Unauthenticated requests return <code>401 Unauthorized</code>.</p>
+
+    <!-- Base URL -->
+    <h2 class="section-title" id="base-url">Base URL</h2>
+    <p>All data endpoints use a single base path:</p>
+    <pre>/api/data</pre>
+    <p>Operations are specified via query parameters: <code>store</code>, <code>action</code>, and optionally <code>id</code>.</p>
+
+    <!-- Errors -->
+    <h2 class="section-title" id="errors">Error Handling</h2>
+    <p>Errors return JSON with an <code>error</code> field:</p>
+    <pre>{ "error": "Session expired" }</pre>
+    <table>
+      <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>200</code></td><td>Success</td></tr>
+        <tr><td><code>401</code></td><td>Unauthorized (invalid or expired token)</td></tr>
+        <tr><td><code>400</code></td><td>Bad request (missing params)</td></tr>
+        <tr><td><code>500</code></td><td>Server error</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Endpoints -->
+    <h2 class="section-title" id="list">List Records</h2>
+    <div class="endpoint-block">
+      <div class="endpoint-row">
+        <span class="method get">GET</span>
+        <span class="endpoint-path">/api/data?store={store}&amp;action=list</span>
+      </div>
+      <p>Returns all records for the authenticated user in the specified store.</p>
+    </div>
+    <pre>curl -H "Authorization: Bearer $TOKEN" \
+  "https://yourapp.com/api/data?store=products&action=list"</pre>
+
+    <h2 class="section-title" id="get">Get Record</h2>
+    <div class="endpoint-block">
+      <div class="endpoint-row">
+        <span class="method get">GET</span>
+        <span class="endpoint-path">/api/data?store={store}&amp;action=get&amp;id={id}</span>
+      </div>
+      <p>Returns a single record by ID.</p>
+    </div>
+    <pre>curl -H "Authorization: Bearer $TOKEN" \
+  "https://yourapp.com/api/data?store=products&action=get&id=42"</pre>
+
+    <h2 class="section-title" id="create">Create Record</h2>
+    <div class="endpoint-block">
+      <div class="endpoint-row">
+        <span class="method post">POST</span>
+        <span class="endpoint-path">/api/data?store={store}&amp;action=create</span>
+      </div>
+      <p>Creates a new record. Send the record data as JSON body.</p>
+    </div>
+    <pre>curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Widget A","quantity":50,"sellPrice":12.99}' \
+  "https://yourapp.com/api/data?store=products&action=create"</pre>
+
+    <h2 class="section-title" id="update">Update Record</h2>
+    <div class="endpoint-block">
+      <div class="endpoint-row">
+        <span class="method post">POST</span>
+        <span class="endpoint-path">/api/data?store={store}&amp;action=update&amp;id={id}</span>
+      </div>
+      <p>Updates an existing record. Send only the fields to update.</p>
+    </div>
+    <pre>curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"quantity":75}' \
+  "https://yourapp.com/api/data?store=products&action=update&id=42"</pre>
+
+    <h2 class="section-title" id="delete">Delete Record</h2>
+    <div class="endpoint-block">
+      <div class="endpoint-row">
+        <span class="method post">POST</span>
+        <span class="endpoint-path">/api/data?store={store}&amp;action=delete&amp;id={id}</span>
+      </div>
+      <p>Permanently deletes a record by ID.</p>
+    </div>
+    <pre>curl -X POST -H "Authorization: Bearer $TOKEN" \
+  "https://yourapp.com/api/data?store=products&action=delete&id=42"</pre>
+
+    <h2 class="section-title" id="upsert">Upsert Record</h2>
+    <div class="endpoint-block">
+      <div class="endpoint-row">
+        <span class="method post">POST</span>
+        <span class="endpoint-path">/api/data?store={store}&amp;action=upsert</span>
+      </div>
+      <p>Creates a record if it does not exist, or updates it if it does (matched by ID).</p>
+    </div>
+    <pre>curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id":42,"name":"Widget A","quantity":100}' \
+  "https://yourapp.com/api/data?store=products&action=upsert"</pre>
+
+    <h2 class="section-title" id="batch">Batch Create</h2>
+    <div class="endpoint-block">
+      <div class="endpoint-row">
+        <span class="method post">POST</span>
+        <span class="endpoint-path">/api/data?store={store}&amp;action=batch</span>
+      </div>
+      <p>Creates multiple records at once. Send a <code>records</code> array in the JSON body.</p>
+    </div>
+    <pre>curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"records":[{"name":"A","quantity":10},{"name":"B","quantity":20}]}' \
+  "https://yourapp.com/api/data?store=products&action=batch"</pre>
+
+    <h2 class="section-title" id="profile">Business Profile</h2>
+    <div class="endpoint-block">
+      <div class="endpoint-row">
+        <span class="method get">GET</span>
+        <span class="endpoint-path">/api/data?store=businesses&amp;action=profile</span>
+      </div>
+      <p>Returns the authenticated user's business profile (name, theme, thresholds, labels).</p>
+    </div>
+    <div class="endpoint-block">
+      <div class="endpoint-row">
+        <span class="method post">POST</span>
+        <span class="endpoint-path">/api/data?store=businesses&amp;action=profile</span>
+      </div>
+      <p>Updates the business profile. Send only the fields to change.</p>
+    </div>
+    <pre>curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Workshop","product_label":"Candle"}' \
+  "https://yourapp.com/api/data?store=businesses&action=profile"</pre>
+
+    <!-- Store Reference -->
+    <h2 class="section-title" id="stores">Store Reference</h2>
+    <p>Available stores: <span class="badge-store">products</span> <span class="badge-store">materials</span> <span class="badge-store">recipes</span> <span class="badge-store">suppliers</span> <span class="badge-store">orders</span> <span class="badge-store">locations</span> <span class="badge-store">production</span> <span class="badge-store">expenses</span> <span class="badge-store">history</span> <span class="badge-store">waste</span> <span class="badge-store">batches</span> <span class="badge-store">transactions</span></p>
+
+    <h3 id="store-products">Products</h3>
+    <p>Finished goods you sell or track inventory for.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>string</td><td>Product name (required)</td></tr>
+        <tr><td><code>quantity</code></td><td>number</td><td>Current stock count</td></tr>
+        <tr><td><code>sellPrice</code></td><td>number</td><td>Selling price in dollars</td></tr>
+        <tr><td><code>sku</code></td><td>string</td><td>SKU or barcode identifier</td></tr>
+        <tr><td><code>note</code></td><td>string</td><td>Optional note</td></tr>
+        <tr><td><code>needsMade</code></td><td>boolean</td><td>Flagged as needing production</td></tr>
+        <tr><td><code>inProduction</code></td><td>boolean</td><td>Currently being produced</td></tr>
+        <tr><td><code>lowThreshold</code></td><td>number</td><td>Custom low-stock threshold (overrides global)</td></tr>
+        <tr><td><code>locationId</code></td><td>number</td><td>Warehouse/location ID</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-materials">Materials</h3>
+    <p>Raw materials, packaging, labels, and supplies.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>string</td><td>Material name (required)</td></tr>
+        <tr><td><code>category</code></td><td>string</td><td>raw, packaging, label, fragrance, other</td></tr>
+        <tr><td><code>unit</code></td><td>string</td><td>units, lbs, oz, kg, ml, each</td></tr>
+        <tr><td><code>quantity</code></td><td>number</td><td>Amount on hand</td></tr>
+        <tr><td><code>costPerUnit</code></td><td>number</td><td>Cost per unit in dollars</td></tr>
+        <tr><td><code>supplierId</code></td><td>number</td><td>Linked supplier ID</td></tr>
+        <tr><td><code>lowThreshold</code></td><td>number</td><td>Low-stock alert threshold</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-recipes">Recipes</h3>
+    <p>Bill of materials linking products to their required materials.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>string</td><td>Recipe name</td></tr>
+        <tr><td><code>productId</code></td><td>number</td><td>Output product ID</td></tr>
+        <tr><td><code>yield</code></td><td>number</td><td>Units produced per batch</td></tr>
+        <tr><td><code>ingredients</code></td><td>array</td><td>Array of {materialId, quantity} objects</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-suppliers">Suppliers</h3>
+    <p>Vendor and supplier contact information.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>string</td><td>Supplier name (required)</td></tr>
+        <tr><td><code>contact</code></td><td>string</td><td>Contact name</td></tr>
+        <tr><td><code>email</code></td><td>string</td><td>Email address</td></tr>
+        <tr><td><code>phone</code></td><td>string</td><td>Phone number</td></tr>
+        <tr><td><code>website</code></td><td>string</td><td>Website URL</td></tr>
+        <tr><td><code>note</code></td><td>string</td><td>Notes</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-orders">Orders</h3>
+    <p>Purchase orders sent to suppliers.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>supplierId</code></td><td>number</td><td>Supplier ID</td></tr>
+        <tr><td><code>status</code></td><td>string</td><td>draft, sent, received, cancelled</td></tr>
+        <tr><td><code>items</code></td><td>array</td><td>Array of {materialId, quantity, unitCost}</td></tr>
+        <tr><td><code>total</code></td><td>number</td><td>Order total</td></tr>
+        <tr><td><code>note</code></td><td>string</td><td>Order notes</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-locations">Locations</h3>
+    <p>Warehouses, stockrooms, or other storage locations.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>string</td><td>Location name (required)</td></tr>
+        <tr><td><code>address</code></td><td>string</td><td>Physical address</td></tr>
+        <tr><td><code>isDefault</code></td><td>boolean</td><td>Whether this is the default location</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-production">Production</h3>
+    <p>Production run logs.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>quantity</code></td><td>number</td><td>Units produced</td></tr>
+        <tr><td><code>productId</code></td><td>number</td><td>Product that was produced</td></tr>
+        <tr><td><code>note</code></td><td>string</td><td>Production notes</td></tr>
+        <tr><td><code>createdAt</code></td><td>string</td><td>ISO 8601 timestamp</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-expenses">Expenses</h3>
+    <p>Overhead and business expenses for cost analysis.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>string</td><td>Expense name</td></tr>
+        <tr><td><code>amount</code></td><td>number</td><td>Monthly cost in dollars</td></tr>
+        <tr><td><code>category</code></td><td>string</td><td>rent, labor, utilities, marketing, other</td></tr>
+        <tr><td><code>frequency</code></td><td>string</td><td>monthly, weekly, yearly, one-time</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-history">History</h3>
+    <p>Audit log of all inventory changes.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>itemType</code></td><td>string</td><td>product or material</td></tr>
+        <tr><td><code>itemId</code></td><td>number</td><td>ID of the affected item</td></tr>
+        <tr><td><code>itemName</code></td><td>string</td><td>Name at time of change</td></tr>
+        <tr><td><code>changeType</code></td><td>string</td><td>restock, sold, produced, transfer</td></tr>
+        <tr><td><code>quantityChange</code></td><td>number</td><td>Amount changed (positive or negative)</td></tr>
+        <tr><td><code>newQuantity</code></td><td>number</td><td>Resulting quantity</td></tr>
+        <tr><td><code>note</code></td><td>string</td><td>Context note</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-waste">Waste</h3>
+    <p>Waste and spoilage tracking.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>itemType</code></td><td>string</td><td>product or material</td></tr>
+        <tr><td><code>itemId</code></td><td>number</td><td>Item ID</td></tr>
+        <tr><td><code>quantity</code></td><td>number</td><td>Amount wasted</td></tr>
+        <tr><td><code>reason</code></td><td>string</td><td>Reason for waste</td></tr>
+        <tr><td><code>cost</code></td><td>number</td><td>Estimated cost of waste</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-batches">Batches</h3>
+    <p>Production batch tracking with lot numbers.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>productId</code></td><td>number</td><td>Product ID</td></tr>
+        <tr><td><code>lotNumber</code></td><td>string</td><td>Lot or batch number</td></tr>
+        <tr><td><code>quantity</code></td><td>number</td><td>Units in this batch</td></tr>
+        <tr><td><code>producedAt</code></td><td>string</td><td>ISO 8601 production date</td></tr>
+        <tr><td><code>expiresAt</code></td><td>string</td><td>ISO 8601 expiration date</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="store-transactions">Transactions</h3>
+    <p>Financial transactions synced from Plaid or entered manually.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>string</td><td>Transaction description</td></tr>
+        <tr><td><code>amount</code></td><td>number</td><td>Amount in dollars</td></tr>
+        <tr><td><code>date</code></td><td>string</td><td>Transaction date</td></tr>
+        <tr><td><code>category</code></td><td>string</td><td>Category label</td></tr>
+        <tr><td><code>accountId</code></td><td>string</td><td>Plaid account ID</td></tr>
+        <tr><td><code>plaidId</code></td><td>string</td><td>Plaid transaction ID</td></tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:60px;padding-top:20px;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.8rem;">
+      ClearCost API Documentation. All endpoints require authentication.
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

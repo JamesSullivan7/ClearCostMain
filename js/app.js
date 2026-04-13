@@ -739,7 +739,29 @@ function handlePageChange(page) {
 }
 
 function renderInventoryPage() {
-  const items = products.filterProducts({ filter: productFilter, search: productSearch });
+  let items = products.filterProducts({ filter: productFilter, search: productSearch });
+
+  // Location filter
+  const allLocations = locations.getAllLocations();
+  const toolbar = document.querySelector('#page-inventory .toolbar-left');
+  if (toolbar && allLocations.length > 0) {
+    let locSelect = document.getElementById('loc-filter');
+    if (!locSelect) {
+      locSelect = document.createElement('select');
+      locSelect.id = 'loc-filter';
+      locSelect.className = 'search-input';
+      locSelect.style.width = 'auto';
+      locSelect.innerHTML = `<option value="">All Locations</option>` +
+        allLocations.map(l => `<option value="${l.id}">${escHtml(l.name)}</option>`).join('');
+      locSelect.addEventListener('change', () => { renderInventoryPage(); });
+      toolbar.appendChild(locSelect);
+    }
+    const selectedLoc = locSelect.value;
+    if (selectedLoc) {
+      items = items.filter(p => p.locationId === parseInt(selectedLoc));
+    }
+  }
+
   renderProductGrid('grid', items);
 }
 
@@ -1353,6 +1375,12 @@ function renderSettingsPage() {
     <div id="qb-section-container"></div>
 
     <div class="settings-section">
+      <h3>Developer API</h3>
+      <p style="color:var(--text-muted);margin-bottom:12px;">Integrate ClearCost with your own tools using the REST API.</p>
+      <a href="/api-docs.html" target="_blank" class="btn-secondary" style="display:inline-block;text-decoration:none;">View API Documentation</a>
+    </div>
+
+    <div class="settings-section">
       <h3>Data Management</h3>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn-secondary" id="btn-export-data">Export All Data (JSON)</button>
@@ -1705,6 +1733,12 @@ async function handleMainClick(e) {
         break;
       }
       showAddMaterialModal();
+      break;
+    }
+
+    case 'scan-barcode': {
+      const target = btn.dataset.target || 'product';
+      showBarcodeScanner(target);
       break;
     }
 
@@ -2275,6 +2309,10 @@ async function handleMainChange(e) {
 // ── Modals ───────────────────────────────────────────
 
 function showAddProductModal() {
+  const allLocations = locations.getAllLocations();
+  const locOptions = [{ value: '', label: 'None' }, ...allLocations.map(l => ({ value: String(l.id), label: l.name }))];
+  const defaultLoc = locations.getDefaultLocation();
+
   showFormModal({
     title: `Add New ${config.label('product')}`,
     fields: [
@@ -2288,6 +2326,7 @@ function showAddProductModal() {
         { value: 'needs', label: 'Needs to be Made' },
         { value: 'production', label: 'In Production' },
       ]},
+      ...(allLocations.length > 0 ? [{ id: 'add-p-loc', label: 'Location', type: 'select', value: defaultLoc ? String(defaultLoc.id) : '', options: locOptions }] : []),
     ],
     submitLabel: `Add ${config.label('Product')}`,
     async onSubmit(vals) {
@@ -2303,6 +2342,7 @@ function showAddProductModal() {
         lowThreshold: vals['add-p-low'] ? parseInt(vals['add-p-low']) : null,
         needsMade: vals['add-p-status'] === 'needs',
         inProduction: vals['add-p-status'] === 'production',
+        locationId: vals['add-p-loc'] ? parseInt(vals['add-p-loc']) : null,
       });
       if (qty > 0) {
         await history.addEntry({
@@ -2374,6 +2414,9 @@ function showEditNoteModal(id) {
 function showAddMaterialModal() {
   const allSuppliers = suppliers.getAllSuppliers();
   const supplierOptions = [{ value: '', label: 'None' }, ...allSuppliers.map(s => ({ value: String(s.id), label: s.name }))];
+  const allLocations = locations.getAllLocations();
+  const locOptions = [{ value: '', label: 'None' }, ...allLocations.map(l => ({ value: String(l.id), label: l.name }))];
+  const defaultLoc = locations.getDefaultLocation();
 
   showFormModal({
     title: 'Add New Material',
@@ -2398,6 +2441,7 @@ function showAddMaterialModal() {
       { id: 'add-m-cost', label: 'Cost Per Unit ($)', type: 'number', placeholder: '0.00', min: 0, step: '0.01' },
       { id: 'add-m-supplier', label: 'Supplier', type: 'select', value: '', options: supplierOptions },
       { id: 'add-m-low', label: 'Low Stock Threshold', type: 'number', placeholder: '50', min: 1 },
+      ...(allLocations.length > 0 ? [{ id: 'add-m-loc', label: 'Location', type: 'select', value: defaultLoc ? String(defaultLoc.id) : '', options: locOptions }] : []),
     ],
     submitLabel: 'Add Material',
     async onSubmit(vals) {
@@ -2411,6 +2455,7 @@ function showAddMaterialModal() {
         costPerUnit: vals['add-m-cost'] || null,
         supplierId: vals['add-m-supplier'] ? parseInt(vals['add-m-supplier']) : null,
         lowThreshold: vals['add-m-low'] || 50,
+        locationId: vals['add-m-loc'] ? parseInt(vals['add-m-loc']) : null,
       });
       renderMaterialsPage();
       renderHeader();
@@ -2964,6 +3009,163 @@ function showImportModal(type) {
 
     importBtn.textContent = 'Import';
     importBtn.disabled = false;
+  });
+}
+
+// ── Barcode Scanner ─────────────────────────────────
+
+function showBarcodeScanner(target) {
+  const overlay = document.createElement('div');
+  overlay.className = 'scanner-modal';
+  overlay.innerHTML = `
+    <button class="scanner-close" id="scanner-close-btn">&times;</button>
+    <div class="scanner-container" id="scanner-reader"></div>
+    <div class="scanner-result" id="scanner-result" style="display:none"></div>
+  `;
+  document.body.appendChild(overlay);
+
+  let html5Qr = null;
+
+  function cleanup() {
+    if (html5Qr) {
+      html5Qr.stop().catch(() => {});
+      html5Qr.clear();
+    }
+    overlay.remove();
+  }
+
+  document.getElementById('scanner-close-btn').addEventListener('click', cleanup);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(); });
+
+  try {
+    html5Qr = new window.Html5Qrcode('scanner-reader');
+    html5Qr.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 280, height: 160 } },
+      (decodedText) => {
+        html5Qr.stop().catch(() => {});
+        onScanSuccess(decodedText, target, overlay, cleanup);
+      },
+      () => {}
+    ).catch(err => {
+      document.getElementById('scanner-result').style.display = 'block';
+      document.getElementById('scanner-result').innerHTML = `
+        <h3>Camera Error</h3>
+        <p>${escHtml(err.message || 'Could not access camera')}</p>
+        <button class="btn-primary" onclick="this.closest('.scanner-modal').remove()">Close</button>
+      `;
+    });
+  } catch (err) {
+    document.getElementById('scanner-result').style.display = 'block';
+    document.getElementById('scanner-result').innerHTML = `
+      <h3>Scanner Unavailable</h3>
+      <p>Barcode scanning requires HTTPS and camera access.</p>
+      <button class="btn-primary" onclick="this.closest('.scanner-modal').remove()">Close</button>
+    `;
+  }
+}
+
+function onScanSuccess(code, target, overlay, cleanup) {
+  const resultEl = document.getElementById('scanner-result');
+  if (!resultEl) return;
+  resultEl.style.display = 'block';
+
+  // Search products by SKU
+  const allProducts = products.getAllProducts();
+  const matched = allProducts.find(p => p.sku && p.sku.toLowerCase() === code.toLowerCase());
+
+  if (matched) {
+    resultEl.innerHTML = `
+      <h3>${escHtml(matched.name)}</h3>
+      <p>SKU: ${escHtml(matched.sku)}</p>
+      <p>Current Stock: <strong>${matched.quantity}</strong></p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+        <button class="btn-primary" id="scanner-restock-btn">Restock</button>
+        <button class="btn-secondary" id="scanner-done-btn">Done</button>
+      </div>
+    `;
+    document.getElementById('scanner-restock-btn')?.addEventListener('click', () => {
+      cleanup();
+      showRestockProductModal(matched.id);
+    });
+    document.getElementById('scanner-done-btn')?.addEventListener('click', cleanup);
+  } else {
+    // Also check materials
+    const allMats = materials.getAllMaterials();
+    const matchedMat = allMats.find(m => m.sku && m.sku.toLowerCase() === code.toLowerCase());
+    if (matchedMat) {
+      resultEl.innerHTML = `
+        <h3>${escHtml(matchedMat.name)}</h3>
+        <p>SKU: ${escHtml(matchedMat.sku)}</p>
+        <p>On Hand: <strong>${matchedMat.quantity} ${escHtml(matchedMat.unit)}</strong></p>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+          <button class="btn-primary" id="scanner-restock-btn">Restock</button>
+          <button class="btn-secondary" id="scanner-done-btn">Done</button>
+        </div>
+      `;
+      document.getElementById('scanner-restock-btn')?.addEventListener('click', () => {
+        cleanup();
+        showRestockMaterialModal(matchedMat.id);
+      });
+      document.getElementById('scanner-done-btn')?.addEventListener('click', cleanup);
+    } else {
+      resultEl.innerHTML = `
+        <h3>Not Found</h3>
+        <p>No product or material with SKU "<strong>${escHtml(code)}</strong>"</p>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+          <button class="btn-primary" id="scanner-create-btn">Create New ${target === 'material' ? 'Material' : config.label('Product')}</button>
+          <button class="btn-secondary" id="scanner-done-btn">Close</button>
+        </div>
+      `;
+      document.getElementById('scanner-create-btn')?.addEventListener('click', () => {
+        cleanup();
+        if (target === 'material') {
+          showAddMaterialModal();
+        } else {
+          showAddProductModal();
+        }
+      });
+      document.getElementById('scanner-done-btn')?.addEventListener('click', cleanup);
+    }
+  }
+}
+
+// ── Transfer Modal ──────────────────────────────────
+
+function showTransferModal(id) {
+  const item = products.getProductById(id);
+  if (!item) return;
+  const allLocations = locations.getAllLocations();
+  if (allLocations.length < 2) {
+    toast('Add at least 2 locations in settings to transfer stock.', 'warning');
+    return;
+  }
+  const locOptions = allLocations.filter(l => l.id !== item.locationId).map(l => ({ value: String(l.id), label: l.name }));
+  const currentLoc = locations.getLocationById(item.locationId);
+
+  showFormModal({
+    title: `Transfer — ${item.name}`,
+    fields: [
+      { id: 'xfer-from', label: 'From', type: 'text', value: currentLoc ? currentLoc.name : 'Unassigned', disabled: true },
+      { id: 'xfer-to', label: 'To Location', type: 'select', options: locOptions, required: true },
+      { id: 'xfer-qty', label: 'Quantity', type: 'number', placeholder: 'e.g. 10', min: 1, max: item.quantity },
+      { id: 'xfer-note', label: 'Note (optional)', type: 'text', placeholder: 'e.g. restocking downtown' },
+    ],
+    submitLabel: 'Transfer',
+    async onSubmit(vals) {
+      const qty = parseInt(vals['xfer-qty']);
+      if (!qty || qty <= 0 || qty > item.quantity) { toast('Invalid quantity', 'warning'); return false; }
+      const toLocId = parseInt(vals['xfer-to']);
+      // Update current product location (reduce qty conceptually, but since we don't split rows, just move it)
+      await products.updateProduct(id, { locationId: toLocId });
+      await history.addEntry({
+        itemType: 'product', itemId: id, itemName: item.name,
+        changeType: 'transfer', quantityChange: 0, newQuantity: item.quantity,
+        note: `Transferred to ${locations.getLocationById(toLocId)?.name || 'Unknown'}${vals['xfer-note'] ? ' — ' + vals['xfer-note'] : ''}`,
+      });
+      renderInventoryPage();
+      toast(`${item.name} transferred`, 'success');
+    },
   });
 }
 

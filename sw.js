@@ -1,9 +1,10 @@
 // ── Service Worker — Cache-First Offline PWA ─────────
 
-const CACHE_NAME = 'inv-platform-v8';
+const CACHE_NAME = 'inv-platform-v9';
 const ASSETS = [
   '/',
   '/index.html',
+  '/api-docs.html',
   '/css/variables.css',
   '/css/base.css',
   '/css/layout.css',
@@ -18,6 +19,7 @@ const ASSETS = [
   '/js/stores/production.js',
   '/js/stores/expenses.js',
   '/js/stores/transactions.js',
+  '/js/stores/locations.js',
   '/js/services/cost-analysis.js',
   '/js/services/plaid.js',
   '/js/ui/header.js',

@@ -4,6 +4,7 @@ import { escHtml } from './modals.js';
 import { getProductStatus, getStatusBadge as getProductBadge } from '../stores/products.js';
 import { getMaterialStatus, getStatusBadge as getMaterialBadge, getAllMaterials } from '../stores/materials.js';
 import { getRecipeForProduct, calculateRecipeCost } from '../stores/recipes.js';
+import { getLocationById } from '../stores/locations.js';
 
 // ── Product Card ─────────────────────────────────────
 
@@ -23,11 +24,14 @@ export function renderProductCard(item) {
     }
   }
 
+  const loc = item.locationId ? getLocationById(item.locationId) : null;
+  const locBadge = loc ? `<span class="location-badge">${escHtml(loc.name)}</span>` : '';
+
   return `
     <div class="card ${status}" data-product-id="${item.id}">
       <div class="card-header">
         <div>
-          <div class="candle-name">${escHtml(item.name)}</div>
+          <div class="candle-name">${escHtml(item.name)}${locBadge}</div>
           ${item.note ? `<div class="candle-note">${escHtml(item.note)}</div>` : ''}
           ${cogsDisplay}
         </div>
@@ -66,11 +70,14 @@ export function renderMaterialCard(item) {
   const badge = getMaterialBadge(item);
   const qtyDisplay = Number.isInteger(item.quantity) ? item.quantity : item.quantity.toFixed(2).replace(/\.?0+$/, '');
 
+  const matLoc = item.locationId ? getLocationById(item.locationId) : null;
+  const matLocBadge = matLoc ? `<span class="location-badge">${escHtml(matLoc.name)}</span>` : '';
+
   return `
     <div class="mat-card ${status === 'out' ? 'mat-low' : status === 'low' ? 'mat-warn' : 'mat-ok'}" data-material-id="${item.id}">
       <div class="mat-card-header">
         <div style="flex:1;min-width:0;">
-          <div class="mat-name">${escHtml(item.name)}</div>
+          <div class="mat-name">${escHtml(item.name)}${matLocBadge}</div>
           <div class="mat-recipe" style="font-size:0.72rem;color:var(--text-muted);margin-top:3px;">${escHtml(item.category)}</div>
         </div>
         <span class="mat-badge ${badge.cls}">${badge.label}</span>

@@ -1213,3 +1213,19 @@ input[type=checkbox].sw-toggle { width: 17px; height: 17px; accent-color: var(--
 .onboarding-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; }
 .onboarding-card h4 { margin: 0; font-size: 0.95rem; color: var(--text); }
 .onboarding-card p { margin: 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+
+/* ── Barcode Scanner ─────────────────────────────────── */
+
+.scanner-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 9000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.scanner-container { width: 100%; max-width: 500px; border-radius: 12px; overflow: hidden; }
+.scanner-result { background: var(--surface); padding: 20px; border-radius: 12px; margin-top: 16px; text-align: center; max-width: 500px; width: 100%; }
+.scanner-result h3 { margin: 0 0 8px; color: var(--text); font-size: 1rem; }
+.scanner-result p { margin: 4px 0; color: var(--text-muted); font-size: 0.85rem; }
+.scanner-result .btn-primary { margin-top: 12px; }
+.scanner-close { position: absolute; top: 20px; right: 20px; background: none; border: none; color: white; font-size: 2rem; cursor: pointer; z-index: 9001; }
+
+/* ── Location Badge & Filter ─────────────────────────── */
+
+.location-badge { font-size: 0.65rem; background: var(--surface2); color: var(--text-muted); padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+.location-filter { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; font-family: inherit; }
+.location-filter:focus { border-color: var(--accent); outline: none; }
