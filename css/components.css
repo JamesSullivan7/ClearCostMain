@@ -363,12 +363,28 @@ input[type=checkbox].sw-toggle { width: 17px; height: 17px; accent-color: var(--
   .settings-section { padding: 16px; }
   .threshold-row { gap: 8px; font-size: 0.85rem; }
 
-  .cost-summary-row { grid-template-columns: 1fr 1fr; }
+  .cost-summary-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .cost-summary-value { font-size: 1.3rem; }
+  .cost-summary-label { font-size: 0.65rem; }
   .cost-info-bar { flex-direction: column; gap: 4px; }
   .cost-table-wrap { overflow-x: auto; }
-  .cost-table { font-size: 0.75rem; }
+  .cost-table { font-size: 0.72rem; }
+  .cost-table th, .cost-table td { padding: 6px 8px; }
   .cost-stack { max-width: 100%; }
   .overhead-row { flex-wrap: wrap; }
+  .overhead-amount { min-width: 60px; font-size: 0.78rem; }
+
+  /* P&L statement */
+  .pl-statement { font-size: 0.82rem; }
+  .pl-row { padding: 6px 0; }
+  .pl-indent { padding-left: 10px; }
+
+  /* Onboarding cards */
+  .onboarding-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Expense items */
+  .expense-item { flex-wrap: wrap; }
+  .expense-item-actions { margin-left: 0; margin-top: 8px; }
 }
 
 /* ── Cost Analysis & Expenses ─────────────────────── */
@@ -1185,3 +1201,15 @@ input[type=checkbox].sw-toggle { width: 17px; height: 17px; accent-color: var(--
   font-size: 0.8rem; color: var(--danger); max-height: 140px; overflow-y: auto;
 }
 .import-error-list li { margin-bottom: 2px; }
+
+/* ── Onboarding Cards ───────────────────────────────── */
+
+.onboarding-section { margin-bottom: 24px; }
+.onboarding-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.onboarding-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 8px; transition: border-color 0.2s; }
+.onboarding-card:hover { border-color: var(--accent); }
+.onboarding-done { opacity: 0.5; border-color: var(--success); }
+.onboarding-done .onboarding-icon { background: var(--success); color: var(--bg); }
+.onboarding-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: var(--bg); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; }
+.onboarding-card h4 { margin: 0; font-size: 0.95rem; color: var(--text); }
+.onboarding-card p { margin: 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }

@@ -41,6 +41,20 @@ import {
   downloadCSV,
 } from './services/csv-import.js';
 
+// ── Friendly Error Helper ────────────────────────────
+
+function friendlyError(err) {
+  const msg = (err?.message || err || '').toLowerCase();
+  if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('network')) return 'Connection error. Please check your internet and try again.';
+  if (msg.includes('unauthorized') || msg.includes('401') || msg.includes('invalid token') || msg.includes('session expired')) return 'Your session has expired. Please log in again.';
+  if (msg.includes('unique') || msg.includes('duplicate') || msg.includes('already exists')) return 'This item already exists.';
+  if (msg.includes('foreign key') || msg.includes('referenced') || msg.includes('linked')) return 'This item is linked to other records and cannot be deleted.';
+  if (msg.includes('not found') || msg.includes('404')) return 'Item not found. It may have been deleted.';
+  if (msg.includes('permission') || msg.includes('403') || msg.includes('forbidden')) return 'You do not have permission to do this.';
+  if (msg.includes('timeout')) return 'Request timed out. Please try again.';
+  return 'Something went wrong. Please try again.';
+}
+
 // ── State ────────────────────────────────────────────
 
 let productFilter = 'all';
@@ -572,6 +586,10 @@ function showLandingPage() {
       document.getElementById('btn-signup').disabled = true;
 
       await signUp(email, password, bizName, bizType);
+      // Show welcome toast after app loads
+      setTimeout(() => {
+        toast('Welcome to ClearCost! Follow the getting started guide to set up your business.', 'success', 6000);
+      }, 2000);
       await loadApp();
     } catch (err) {
       errorEl.textContent = err.message;
@@ -758,7 +776,51 @@ function renderDashboardPage() {
   const soonestOut = prodForecasts.find(f => f.daysUntilOut !== Infinity);
   const soonestDays = soonestOut ? soonestOut.daysUntilOut : null;
 
-  let html = `
+  // Onboarding detection
+  const pCount = allProds.length;
+  const mCount = allMats.length;
+  const rCount = recipes.getAllRecipes().length;
+  const eCount = expenses.getAllExpenses().length;
+  const allStepsDone = pCount > 0 && mCount > 0 && rCount > 0 && eCount > 0;
+
+  let html = '';
+
+  // Getting started cards (show if any step is incomplete)
+  if (!allStepsDone) {
+    html += `
+    <div class="onboarding-section">
+      <h3>Getting Started</h3>
+      <p style="color:var(--text-muted);margin-bottom:16px;">Complete these steps to set up your business</p>
+      <div class="onboarding-grid">
+        <div class="onboarding-card ${pCount > 0 ? 'onboarding-done' : ''}">
+          <div class="onboarding-icon">${pCount > 0 ? '&#10003;' : '1'}</div>
+          <h4>Add Products</h4>
+          <p>Add the products you sell with prices and SKUs</p>
+          <a href="#inventory" class="btn-secondary" style="margin-top:auto;">Go to Inventory</a>
+        </div>
+        <div class="onboarding-card ${mCount > 0 ? 'onboarding-done' : ''}">
+          <div class="onboarding-icon">${mCount > 0 ? '&#10003;' : '2'}</div>
+          <h4>Add Materials</h4>
+          <p>Add raw materials with costs and suppliers</p>
+          <a href="#materials" class="btn-secondary" style="margin-top:auto;">Go to Materials</a>
+        </div>
+        <div class="onboarding-card ${rCount > 0 ? 'onboarding-done' : ''}">
+          <div class="onboarding-icon">${rCount > 0 ? '&#10003;' : '3'}</div>
+          <h4>Create Recipes</h4>
+          <p>Link materials to products with exact quantities</p>
+          <a href="#recipes" class="btn-secondary" style="margin-top:auto;">Go to Recipes</a>
+        </div>
+        <div class="onboarding-card ${eCount > 0 ? 'onboarding-done' : ''}">
+          <div class="onboarding-icon">${eCount > 0 ? '&#10003;' : '4'}</div>
+          <h4>Set Expenses</h4>
+          <p>Add rent, labor, and other business costs</p>
+          <a href="#expenses" class="btn-secondary" style="margin-top:auto;">Go to Expenses</a>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  html += `
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px;">
       <div class="settings-section" style="text-align:center;margin-bottom:0;">
         <div style="font-size:2.4rem;color:var(--accent);font-weight:300;">${pStats.total.toLocaleString()}</div>
@@ -1435,7 +1497,7 @@ async function importData(e) {
     renderAll();
     toast('Data imported successfully', 'success');
   } catch (err) {
-    toast('Import failed: ' + err.message, 'error');
+    toast(friendlyError(err), 'error');
   }
   e.target.value = '';
 }
@@ -1908,7 +1970,7 @@ async function handleMainClick(e) {
           renderTransactionsPage();
         }
       } catch (err) {
-        toast(`Connection failed: ${err.message}`, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
     }
@@ -1928,7 +1990,7 @@ async function handleMainClick(e) {
       } catch (err) {
         setPlaidSyncing(false);
         renderTransactionsPage();
-        toast(`Sync failed: ${err.message}`, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
     }
@@ -1946,7 +2008,7 @@ async function handleMainClick(e) {
       } catch (err) {
         setPlaidSyncing(false);
         renderTransactionsPage();
-        toast(`Sync failed: ${err.message}`, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
     }
@@ -1960,7 +2022,7 @@ async function handleMainClick(e) {
         renderTransactionsPage();
         toast('Account unlinked', 'info');
       } catch (err) {
-        toast(`Failed to unlink: ${err.message}`, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
     }
@@ -1974,7 +2036,7 @@ async function handleMainClick(e) {
         toast('Redirecting to checkout...', 'info');
         await createCheckoutSession(tier);
       } catch (err) {
-        toast(err.message, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
     }
@@ -1984,7 +2046,7 @@ async function handleMainClick(e) {
         toast('Opening billing portal...', 'info');
         await openBillingPortal();
       } catch (err) {
-        toast(err.message, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
     }
@@ -2006,7 +2068,7 @@ async function handleMainClick(e) {
         toast('Disconnected from QuickBooks', 'info');
         await loadQBSection();
       } catch (err) {
-        toast(`Failed to disconnect: ${err.message}`, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
 
@@ -2017,7 +2079,7 @@ async function handleMainClick(e) {
         toast(`Products: ${prodResult.created} created, ${prodResult.updated} updated${prodResult.errors.length ? `, ${prodResult.errors.length} errors` : ''}`, 'success');
         await loadQBSection();
       } catch (err) {
-        toast(`Sync failed: ${err.message}`, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
 
@@ -2028,7 +2090,7 @@ async function handleMainClick(e) {
         toast(`Suppliers: ${supResult.created} created, ${supResult.updated} updated${supResult.errors.length ? `, ${supResult.errors.length} errors` : ''}`, 'success');
         await loadQBSection();
       } catch (err) {
-        toast(`Sync failed: ${err.message}`, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
 
@@ -2039,7 +2101,7 @@ async function handleMainClick(e) {
         toast(`Expenses: ${expResult.created} created${expResult.errors.length ? `, ${expResult.errors.length} errors` : ''}`, 'success');
         await loadQBSection();
       } catch (err) {
-        toast(`Sync failed: ${err.message}`, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
 
@@ -2051,7 +2113,7 @@ async function handleMainClick(e) {
         if (container) container.innerHTML = renderQuickBooksSection(_qbStatus, _qbReport);
         toast('P&L report loaded', 'success');
       } catch (err) {
-        toast(`Failed to fetch report: ${err.message}`, 'error');
+        toast(friendlyError(err), 'error');
       }
       break;
   }
