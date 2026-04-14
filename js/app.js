@@ -37,6 +37,9 @@ import {
   resetPassword, updatePassword, getSubscriptionTier,
 } from './supabase.js';
 import { renderPricingPage, renderBillingSection, createCheckoutSession, openBillingPortal, getSubscriptionStatus } from './ui/pricing.js';
+import { connectEtsy, disconnectEtsy, syncEtsyOrders, connectShopify, disconnectShopify, syncShopifyOrders, getChannelStatus } from './services/ecommerce.js';
+import { getShippingRates, createShippingLabel } from './services/shipping.js';
+import { renderSalesChannelsSection } from './ui/ecommerce.js';
 import {
   getProductTemplate, getMaterialTemplate, getRecipeTemplate,
   parseCSV, importProducts, importMaterials, importRecipes,
@@ -1378,6 +1381,8 @@ function renderSettingsPage() {
 
     <div id="billing-section-container"></div>
 
+    <div id="ecommerce-section-container"></div>
+
     <div id="qb-section-container"></div>
 
     <div class="settings-section">
@@ -1398,6 +1403,9 @@ function renderSettingsPage() {
 
   // Load billing section
   loadBillingSection();
+
+  // Load Sales Channels (Etsy/Shopify) section
+  loadEcommerceSection();
 
   // Load QuickBooks status and render section
   loadQBSection();
@@ -2157,6 +2165,147 @@ async function handleMainClick(e) {
       }
       break;
 
+    // ── Ecommerce / Sales Channel Actions ──
+    case 'etsy-connect':
+      connectEtsy();
+      break;
+
+    case 'etsy-disconnect':
+      if (!confirm('Disconnect from Etsy? Your imported orders will not be affected.')) break;
+      try {
+        await disconnectEtsy();
+        toast('Disconnected from Etsy', 'info');
+        await loadEcommerceSection();
+      } catch (err) {
+        toast(friendlyError(err), 'error');
+      }
+      break;
+
+    case 'etsy-sync':
+      try {
+        toast('Syncing Etsy orders...', 'info');
+        const etsyResult = await syncEtsyOrders();
+        toast(`Imported ${etsyResult.synced} order${etsyResult.synced !== 1 ? 's' : ''} from Etsy${etsyResult.sandbox ? ' (sandbox)' : ''}`, 'success');
+        await loadEcommerceSection();
+      } catch (err) {
+        toast(friendlyError(err), 'error');
+      }
+      break;
+
+    case 'shopify-connect': {
+      const domainInput = document.getElementById('shopify-domain-input');
+      const domain = domainInput?.value?.trim() || '';
+      try {
+        toast('Connecting to Shopify...', 'info');
+        const shopResult = await connectShopify(domain);
+        if (shopResult?.connected) {
+          toast(`Connected to Shopify${shopResult.sandbox ? ' (sandbox)' : ''}`, 'success');
+          await loadEcommerceSection();
+        }
+      } catch (err) {
+        toast(friendlyError(err), 'error');
+      }
+      break;
+    }
+
+    case 'shopify-disconnect':
+      if (!confirm('Disconnect from Shopify? Your imported orders will not be affected.')) break;
+      try {
+        await disconnectShopify();
+        toast('Disconnected from Shopify', 'info');
+        await loadEcommerceSection();
+      } catch (err) {
+        toast(friendlyError(err), 'error');
+      }
+      break;
+
+    case 'shopify-sync':
+      try {
+        toast('Syncing Shopify orders...', 'info');
+        const shopifyResult = await syncShopifyOrders();
+        toast(`Imported ${shopifyResult.synced} order${shopifyResult.synced !== 1 ? 's' : ''} from Shopify${shopifyResult.sandbox ? ' (sandbox)' : ''}`, 'success');
+        await loadEcommerceSection();
+      } catch (err) {
+        toast(friendlyError(err), 'error');
+      }
+      break;
+
+    // ── Shipping Actions ──
+    case 'get-shipping-rates': {
+      const shippingSale = sales.getSaleById(id);
+      if (!shippingSale) break;
+      const profile = config.getProfile();
+      try {
+        toast('Fetching shipping rates...', 'info');
+        const fromAddr = {
+          name: profile?.name || 'Sender',
+          street1: '123 Business St',
+          city: 'Portland',
+          state: 'OR',
+          zip: '97201',
+          country: 'US',
+        };
+        const toAddr = parseShippingAddress(shippingSale.shippingAddress);
+        const ratesResult = await getShippingRates(fromAddr, toAddr, 16);
+        _shippingRates = ratesResult.rates || [];
+        _shippingShipmentId = ratesResult.shipment_id || null;
+        _shippingForSaleId = id;
+        _selectedShippingRate = null;
+        renderSalesPage();
+        toast(`Found ${_shippingRates.length} shipping rate${_shippingRates.length !== 1 ? 's' : ''}${ratesResult.mock ? ' (demo)' : ''}`, 'success');
+      } catch (err) {
+        toast(friendlyError(err), 'error');
+      }
+      break;
+    }
+
+    case 'select-shipping-rate': {
+      _selectedShippingRate = el.dataset.rateId || null;
+      renderSalesPage();
+      break;
+    }
+
+    case 'buy-shipping-label': {
+      if (!_selectedShippingRate) {
+        toast('Please select a shipping rate first', 'warning');
+        break;
+      }
+      const labelSale = sales.getSaleById(_shippingForSaleId);
+      if (!labelSale) break;
+      const labelProfile = config.getProfile();
+      try {
+        toast('Creating shipping label...', 'info');
+        const fromAddr = {
+          name: labelProfile?.name || 'Sender',
+          street1: '123 Business St',
+          city: 'Portland',
+          state: 'OR',
+          zip: '97201',
+          country: 'US',
+        };
+        const toAddr = parseShippingAddress(labelSale.shippingAddress);
+        const labelResult = await createShippingLabel(_selectedShippingRate, _shippingShipmentId, fromAddr, toAddr);
+        // Update the sale with tracking number
+        if (labelResult.tracking_number) {
+          await sales.updateSale(_shippingForSaleId, {
+            trackingNumber: labelResult.tracking_number,
+            shippingCost: parseFloat(labelResult.rate) || labelSale.shippingCost || 0,
+            shippingCarrier: labelResult.carrier,
+            shippingService: labelResult.service,
+            labelUrl: labelResult.label_url,
+          });
+        }
+        _shippingRates = [];
+        _selectedShippingRate = null;
+        _shippingShipmentId = null;
+        renderSalesPage();
+        toast(`Label created! Tracking: ${labelResult.tracking_number}${labelResult.mock ? ' (demo)' : ''}`, 'success');
+      } catch (err) {
+        toast(friendlyError(err), 'error');
+      }
+      break;
+    }
+
     // ── Customer Actions ──
     case 'add-customer':
       showFormModal({
@@ -2407,6 +2556,40 @@ async function handleMainClick(e) {
 
 // ── Plaid Account Refresh ───────────────────────────
 
+// ── Sales Channels (Ecommerce) Section ─────────────
+
+let _ecommerceStatus = null;
+let _shippingRates = [];
+let _shippingShipmentId = null;
+let _shippingForSaleId = null;
+let _selectedShippingRate = null;
+
+async function loadEcommerceSection() {
+  const container = document.getElementById('ecommerce-section-container');
+  if (!container) return;
+
+  try {
+    _ecommerceStatus = await getChannelStatus();
+  } catch (e) {
+    _ecommerceStatus = null;
+  }
+
+  container.innerHTML = renderSalesChannelsSection(_ecommerceStatus);
+}
+
+function parseShippingAddress(addr) {
+  if (!addr) return { name: 'Recipient', street1: '', city: '', state: '', zip: '', country: 'US' };
+  const parts = addr.split(',').map(s => s.trim());
+  return {
+    name: 'Recipient',
+    street1: parts[0] || '',
+    city: parts[1] || '',
+    state: parts[2] || '',
+    zip: parts[3] || '',
+    country: 'US',
+  };
+}
+
 // ── QuickBooks Section ──────────────────────────────
 
 let _qbStatus = null;
@@ -2516,6 +2699,37 @@ function renderCustomersPage() {
 let salesFilter = 'all';
 let selectedSaleId = null;
 
+function renderShippingSection(sale) {
+  let html = `
+    <div class="shipping-section" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-size:0.85rem;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;">Shipping</div>
+        <button class="btn-secondary" data-action="get-shipping-rates" data-id="${sale.id}" style="font-size:0.78rem;">Get Shipping Rates</button>
+      </div>`;
+
+  if (_shippingForSaleId === sale.id && _shippingRates.length > 0) {
+    html += `<div class="shipping-rates">`;
+    for (const rate of _shippingRates) {
+      const isSelected = _selectedShippingRate === rate.id;
+      html += `
+        <div class="shipping-rate-card ${isSelected ? 'selected' : ''}" data-action="select-shipping-rate" data-rate-id="${rate.id}">
+          <div class="shipping-carrier">${escHtml(rate.carrier)}</div>
+          <div class="shipping-service">${escHtml(rate.service)}</div>
+          <div class="shipping-price">$${parseFloat(rate.rate).toFixed(2)}</div>
+          <div class="shipping-days">${rate.delivery_days ? rate.delivery_days + ' day' + (rate.delivery_days !== 1 ? 's' : '') : 'Varies'}</div>
+        </div>`;
+    }
+    html += `</div>`;
+
+    if (_selectedShippingRate) {
+      html += `<button class="btn-primary" data-action="buy-shipping-label" data-id="${sale.id}" style="margin-top:12px;font-size:0.82rem;">Buy Label & Get Tracking</button>`;
+    }
+  }
+
+  html += `</div>`;
+  return html;
+}
+
 function renderSalesPage() {
   const el = document.getElementById('page-sales');
   if (!el) return;
@@ -2603,6 +2817,8 @@ function renderSalesPage() {
             ${!['paid', 'cancelled'].includes(sale.status) ? `<button class="btn-secondary" data-action="cancel-sale" data-id="${sale.id}" style="color:var(--danger);border-color:var(--danger);font-size:0.82rem;">Cancel</button>` : ''}
             ${['draft', 'cancelled'].includes(sale.status) ? `<button class="btn-secondary" data-action="delete-sale" data-id="${sale.id}" style="color:var(--danger);border-color:var(--danger);font-size:0.82rem;">Delete</button>` : ''}
           </div>
+          ${sale.status === 'confirmed' ? renderShippingSection(sale) : ''}
+          ${sale.labelUrl && sale.labelUrl !== '#' ? `<div style="margin-top:12px;"><a href="${escHtml(sale.labelUrl)}" target="_blank" class="btn-secondary" style="display:inline-block;text-decoration:none;font-size:0.82rem;">Download Shipping Label</a></div>` : ''}
         </div>
       `;
     }

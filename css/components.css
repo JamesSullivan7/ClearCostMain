@@ -1259,3 +1259,38 @@ input[type=checkbox].sw-toggle { width: 17px; height: 17px; accent-color: var(--
 
 .sale-detail { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-top: 16px; }
 .sale-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+/* ── Sales Channels (Ecommerce) ──────────────────────── */
+
+.ecommerce-section { padding: 20px; }
+.ecommerce-channels { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+.channel-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px;
+  transition: border-color 0.2s;
+}
+.channel-card.channel-connected { border-color: rgba(126,200,154,0.3); }
+.channel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.channel-logo { font-weight: 700; font-size: 1.1rem; letter-spacing: -0.02em; }
+.channel-logo-etsy { color: #f56400; }
+.channel-logo-shopify { color: #96bf48; }
+.channel-status-badge { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; }
+.channel-disconnected { background: var(--surface2); color: var(--text-muted); }
+.channel-active { background: rgba(126,200,154,0.15); color: var(--success); }
+.channel-sandbox-badge { font-size: 0.6rem; background: rgba(224,176,96,0.15); color: var(--warning); padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+.channel-shop-name { font-weight: 600; color: var(--text); font-size: 0.95rem; margin-bottom: 4px; }
+.channel-meta { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 2px; }
+.channel-desc { font-size: 0.82rem; color: var(--text-muted); margin: 0 0 16px 0; line-height: 1.4; }
+.channel-actions { display: flex; gap: 8px; margin-top: 14px; }
+.channel-connect-form { margin-top: 4px; }
+
+/* ── Shipping Rates ──────────────────────────────────── */
+
+.shipping-rates { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 12px 0; }
+.shipping-rate-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: border-color 0.2s; }
+.shipping-rate-card:hover, .shipping-rate-card.selected { border-color: var(--accent); }
+.shipping-rate-card.selected { background: rgba(200,160,106,0.06); }
+.shipping-carrier { font-weight: 600; color: var(--text); }
+.shipping-service { font-size: 0.8rem; color: var(--text-muted); }
+.shipping-price { font-size: 1.1rem; font-weight: 700; color: var(--accent); margin-top: 8px; }
+.shipping-days { font-size: 0.75rem; color: var(--text-muted); }
