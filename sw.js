@@ -1,6 +1,6 @@
 // ── Service Worker — Cache-First Offline PWA ─────────
 
-const CACHE_NAME = 'inv-platform-v14';
+const CACHE_NAME = 'inv-platform-v15';
 const ASSETS = [
   '/',
   '/index.html',
@@ -97,8 +97,14 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Cache-first for local assets
+  // Network-first for local assets (ensures fresh code loads, falls back to cache offline)
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+    fetch(e.request)
+      .then(r => {
+        const clone = r.clone();
+        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        return r;
+      })
+      .catch(() => caches.match(e.request))
   );
 });

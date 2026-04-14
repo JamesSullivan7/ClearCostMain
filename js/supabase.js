@@ -16,7 +16,14 @@ export function initSupabase() {
     console.error('Supabase CDN script not loaded');
     return null;
   }
-  client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: true,
+      storageKey: 'clearcost-auth',
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
   return client;
 }
 
