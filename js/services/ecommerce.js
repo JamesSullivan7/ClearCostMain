@@ -89,6 +89,43 @@ export async function syncShopifyOrders() {
   return ecommerceFetch(`${API_BASE}?action=shopify-sync`, { method: 'POST' });
 }
 
+// ── Simulate Webhook (Sandbox only) ───────────────
+
+/**
+ * Simulate an Etsy webhook order for demo/sandbox testing.
+ */
+export async function simulateEtsyWebhook() {
+  return ecommerceFetch(`${API_BASE}?action=etsy-webhook`, {
+    method: 'POST',
+    body: JSON.stringify({
+      shop_id: 'sandbox',
+      receipt_id: 'SIM-' + Date.now(),
+      event_type: 'shop.receipt',
+      simulated: true,
+    }),
+  });
+}
+
+/**
+ * Simulate a Shopify webhook order for demo/sandbox testing.
+ */
+export async function simulateShopifyWebhook() {
+  return ecommerceFetch(`${API_BASE}?action=shopify-webhook`, {
+    method: 'POST',
+    body: JSON.stringify({
+      id: Date.now(),
+      order_number: Math.floor(2000 + Math.random() * 1000),
+      customer: { first_name: 'Demo', last_name: 'Customer' },
+      line_items: [{ title: 'Sample Product', quantity: 1, price: '29.99' }],
+      subtotal_price: '29.99',
+      total_price: '31.49',
+      total_tax: '1.50',
+      created_at: new Date().toISOString(),
+      simulated: true,
+    }),
+  });
+}
+
 // ── Status ─────────────────────────────────────────
 
 /**

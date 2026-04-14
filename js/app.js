@@ -37,9 +37,10 @@ import {
   resetPassword, updatePassword, getSubscriptionTier,
 } from './supabase.js';
 import { renderPricingPage, renderBillingSection, createCheckoutSession, openBillingPortal, getSubscriptionStatus } from './ui/pricing.js';
-import { connectEtsy, disconnectEtsy, syncEtsyOrders, connectShopify, disconnectShopify, syncShopifyOrders, getChannelStatus } from './services/ecommerce.js';
+import { connectEtsy, disconnectEtsy, syncEtsyOrders, connectShopify, disconnectShopify, syncShopifyOrders, getChannelStatus, simulateEtsyWebhook, simulateShopifyWebhook } from './services/ecommerce.js';
 import { getShippingRates, createShippingLabel } from './services/shipping.js';
 import { renderSalesChannelsSection } from './ui/ecommerce.js';
+import { startTutorial } from './ui/tutorial.js';
 import {
   getProductTemplate, getMaterialTemplate, getRecipeTemplate,
   parseCSV, importProducts, importMaterials, importRecipes,
@@ -695,6 +696,12 @@ function showLandingPage() {
       setTimeout(() => {
         toast('Welcome to ClearCost! Follow the getting started guide to set up your business.', 'success', 6000);
       }, 2000);
+      // Auto-start tutorial for new users
+      setTimeout(() => {
+        if (!localStorage.getItem('tutorial_completed')) {
+          startTutorial();
+        }
+      }, 3000);
       await loadApp();
     } catch (err) {
       errorEl.textContent = err.message;
@@ -920,6 +927,7 @@ function renderDashboardPage() {
     <div class="onboarding-section">
       <h3>Getting Started</h3>
       <p style="color:var(--text-muted);margin-bottom:16px;">Complete these steps to set up your business</p>
+      <button class="take-tour-btn" data-action="start-tutorial">&#9654; Take a Tour</button>
       <div class="onboarding-grid">
         <div class="onboarding-card ${pCount > 0 ? 'onboarding-done' : ''}">
           <div class="onboarding-icon">${pCount > 0 ? '&#10003;' : '1'}</div>
@@ -1489,6 +1497,12 @@ function renderSettingsPage() {
     <div id="ecommerce-section-container"></div>
 
     <div id="qb-section-container"></div>
+
+    <div class="settings-section">
+      <h3>App Tour</h3>
+      <p style="color:var(--text-muted);margin-bottom:12px;">Revisit the guided tour to learn about all the features ClearCost offers.</p>
+      <button class="btn-secondary" data-action="start-tutorial">Take a Tour</button>
+    </div>
 
     <div class="settings-section">
       <h3>Developer API</h3>
@@ -2343,6 +2357,32 @@ async function handleMainClick(e) {
         toast('Syncing Shopify orders...', 'info');
         const shopifyResult = await syncShopifyOrders();
         toast(`Imported ${shopifyResult.synced} order${shopifyResult.synced !== 1 ? 's' : ''} from Shopify${shopifyResult.sandbox ? ' (sandbox)' : ''}`, 'success');
+        await loadEcommerceSection();
+      } catch (err) {
+        toast(friendlyError(err), 'error');
+      }
+      break;
+
+    case 'start-tutorial':
+      startTutorial();
+      break;
+
+    case 'simulate-etsy-order':
+      try {
+        toast('Simulating Etsy order webhook...', 'info');
+        const simEtsy = await simulateEtsyWebhook();
+        toast(`Webhook received${simEtsy.sandbox ? ' (sandbox)' : ''} - order auto-synced`, 'success');
+        await loadEcommerceSection();
+      } catch (err) {
+        toast(friendlyError(err), 'error');
+      }
+      break;
+
+    case 'simulate-shopify-order':
+      try {
+        toast('Simulating Shopify order webhook...', 'info');
+        const simShopify = await simulateShopifyWebhook();
+        toast(`Webhook received${simShopify.sandbox ? ' (sandbox)' : ''} - order auto-synced`, 'success');
         await loadEcommerceSection();
       } catch (err) {
         toast(friendlyError(err), 'error');

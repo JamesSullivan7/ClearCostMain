@@ -47,6 +47,9 @@ function renderEtsyCard(etsy) {
     `;
   }
 
+  const webhookActive = etsy.webhook_registered;
+  const lastAutoSync = etsy.last_auto_sync ? new Date(etsy.last_auto_sync).toLocaleString() : null;
+
   return `
     <div class="channel-card channel-connected">
       <div class="channel-header">
@@ -55,8 +58,16 @@ function renderEtsyCard(etsy) {
       </div>
       <div class="channel-shop-name">${escHtml(etsy.shop_name || 'Etsy Shop')}</div>
       ${etsy.connected_at ? `<div class="channel-meta">Connected ${new Date(etsy.connected_at).toLocaleDateString()}</div>` : ''}
+      <div class="channel-auto-sync">
+        <span class="auto-sync-indicator ${webhookActive ? 'active' : ''}">
+          <span class="auto-sync-dot"></span>
+          ${webhookActive ? 'Auto-sync enabled' : 'Auto-sync unavailable'}
+        </span>
+        ${lastAutoSync ? `<span class="auto-sync-time">Last auto-synced: ${lastAutoSync}</span>` : ''}
+      </div>
       <div class="channel-actions">
         <button class="btn-secondary" data-action="etsy-sync" style="flex:1;">Sync Orders</button>
+        ${etsy.sandbox ? `<button class="btn-secondary" data-action="simulate-etsy-order" style="flex:1;color:var(--accent);border-color:var(--accent);">Simulate Order</button>` : ''}
         <button class="btn-secondary" data-action="etsy-disconnect" style="color:var(--danger);border-color:var(--danger);">Disconnect</button>
       </div>
     </div>
@@ -83,6 +94,9 @@ function renderShopifyCard(shopify) {
     `;
   }
 
+  const webhookActive = shopify.webhook_registered;
+  const lastAutoSync = shopify.last_auto_sync ? new Date(shopify.last_auto_sync).toLocaleString() : null;
+
   return `
     <div class="channel-card channel-connected">
       <div class="channel-header">
@@ -92,8 +106,16 @@ function renderShopifyCard(shopify) {
       <div class="channel-shop-name">${escHtml(shopify.shop_name || 'Shopify Store')}</div>
       ${shopify.shop_domain ? `<div class="channel-meta">${escHtml(shopify.shop_domain)}</div>` : ''}
       ${shopify.connected_at ? `<div class="channel-meta">Connected ${new Date(shopify.connected_at).toLocaleDateString()}</div>` : ''}
+      <div class="channel-auto-sync">
+        <span class="auto-sync-indicator ${webhookActive ? 'active' : ''}">
+          <span class="auto-sync-dot"></span>
+          ${webhookActive ? 'Auto-sync enabled' : 'Auto-sync unavailable'}
+        </span>
+        ${lastAutoSync ? `<span class="auto-sync-time">Last auto-synced: ${lastAutoSync}</span>` : ''}
+      </div>
       <div class="channel-actions">
         <button class="btn-secondary" data-action="shopify-sync" style="flex:1;">Sync Orders</button>
+        ${shopify.sandbox ? `<button class="btn-secondary" data-action="simulate-shopify-order" style="flex:1;color:var(--accent);border-color:var(--accent);">Simulate Order</button>` : ''}
         <button class="btn-secondary" data-action="shopify-disconnect" style="color:var(--danger);border-color:var(--danger);">Disconnect</button>
       </div>
     </div>

@@ -11,8 +11,11 @@
 //   POST ?action=shipping-rates    — Get shipping rates
 //   POST ?action=shipping-label    — Create shipping label
 //   GET  ?action=status            — Channel connection status
+//   POST ?action=etsy-webhook      — Receive Etsy order webhook
+//   POST ?action=shopify-webhook   — Receive Shopify order webhook
 
 const { kv } = require('@vercel/kv');
+const crypto = require('crypto');
 
 module.exports = async (req, res) => {
   const action = req.query.action || req.body?.action;
@@ -37,6 +40,12 @@ module.exports = async (req, res) => {
       return handleShopifySync(req, res);
     case 'shopify-disconnect':
       return handleShopifyDisconnect(req, res);
+
+    // ── Webhooks ──
+    case 'etsy-webhook':
+      return handleEtsyWebhook(req, res);
+    case 'shopify-webhook':
+      return handleShopifyWebhook(req, res);
 
     // ── Shipping ──
     case 'shipping-rates':
@@ -67,6 +76,14 @@ function etsyTokenKey(bizId) { return `ecommerce:${bizId}:etsy:token`; }
 function etsyMetaKey(bizId) { return `ecommerce:${bizId}:etsy:meta`; }
 function shopifyTokenKey(bizId) { return `ecommerce:${bizId}:shopify:token`; }
 function shopifyMetaKey(bizId) { return `ecommerce:${bizId}:shopify:meta`; }
+function etsyWebhookKey(bizId) { return `ecommerce:${bizId}:etsy:webhook`; }
+function shopifyWebhookKey(bizId) { return `ecommerce:${bizId}:shopify:webhook`; }
+function etsyLastAutoSyncKey(bizId) { return `ecommerce:${bizId}:etsy:last_auto_sync`; }
+function shopifyLastAutoSyncKey(bizId) { return `ecommerce:${bizId}:shopify:last_auto_sync`; }
+
+// ── Reverse-lookup helpers (shop_id / shop_domain -> bizId) ──
+function etsyShopLookupKey(shopId) { return `ecommerce:etsy_shop:${shopId}:biz`; }
+function shopifyDomainLookupKey(domain) { return `ecommerce:shopify_domain:${domain}:biz`; }
 
 // ══════════════════════════════════════════════════════
 // ── ETSY HANDLERS ────────────────────────────────────
@@ -92,6 +109,12 @@ async function handleEtsyConnect(req, res) {
     await kv.set(etsyMetaKey(bizId), JSON.stringify({
       shop_name: 'My Etsy Shop (Sandbox)',
       connected_at: new Date().toISOString(),
+    }));
+    await kv.set(etsyWebhookKey(bizId), JSON.stringify({
+      registered: true,
+      sandbox: true,
+      url: '/api/ecommerce?action=etsy-webhook',
+      registered_at: new Date().toISOString(),
     }));
     // Redirect back to settings
     return res.writeHead(302, { Location: '/#settings?etsy=connected' }).end();
@@ -158,6 +181,36 @@ async function handleEtsyCallback(req, res) {
       user_id: shopData.user_id,
       connected_at: new Date().toISOString(),
     }));
+
+    // Register webhook for automatic order sync
+    try {
+      const shopId = shopData.shop_id;
+      if (shopId) {
+        // Store reverse lookup so webhook can find the business
+        await kv.set(etsyShopLookupKey(shopId), bizId);
+
+        const webhookUrl = `${req.headers.origin || 'https://localhost'}/api/ecommerce?action=etsy-webhook`;
+        const whRes = await fetch(`https://openapi.etsy.com/v3/application/shops/${shopId}/webhooks`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+            'x-api-key': apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url: webhookUrl, events: ['shop.receipt'] }),
+        });
+
+        const webhookData = whRes.ok ? await whRes.json() : null;
+        await kv.set(etsyWebhookKey(bizId), JSON.stringify({
+          registered: whRes.ok,
+          webhook_id: webhookData?.webhook_id || null,
+          url: webhookUrl,
+          registered_at: new Date().toISOString(),
+        }));
+      }
+    } catch (whErr) {
+      console.warn('Etsy webhook registration failed (non-fatal):', whErr.message);
+    }
 
     return res.writeHead(302, { Location: '/#settings?etsy=connected' }).end();
   } catch (err) {
@@ -261,6 +314,8 @@ async function handleEtsyDisconnect(req, res) {
   try {
     await kv.del(etsyTokenKey(bizId));
     await kv.del(etsyMetaKey(bizId));
+    await kv.del(etsyWebhookKey(bizId));
+    await kv.del(etsyLastAutoSyncKey(bizId));
     return res.status(200).json({ disconnected: true });
   } catch (err) {
     console.error('Etsy disconnect error:', err);
@@ -316,6 +371,12 @@ async function handleShopifyConnect(req, res) {
       shop_name: domain.replace('.myshopify.com', ''),
       shop_domain: domain,
       connected_at: new Date().toISOString(),
+    }));
+    await kv.set(shopifyWebhookKey(bizId), JSON.stringify({
+      registered: true,
+      sandbox: true,
+      url: '/api/ecommerce?action=shopify-webhook',
+      registered_at: new Date().toISOString(),
     }));
 
     return res.status(200).json({ connected: true, sandbox: true, shop: domain });
@@ -385,6 +446,38 @@ async function handleShopifyCallback(req, res) {
       shop_domain: shop,
       connected_at: new Date().toISOString(),
     }));
+
+    // Store reverse lookup so webhook can find the business
+    await kv.set(shopifyDomainLookupKey(shop), bizId);
+
+    // Register webhook for automatic order sync
+    try {
+      const webhookUrl = `${req.headers.origin || 'https://localhost'}/api/ecommerce?action=shopify-webhook`;
+      const whRes = await fetch(`https://${shop}/admin/api/2024-01/webhooks.json`, {
+        method: 'POST',
+        headers: {
+          'X-Shopify-Access-Token': tokenData.access_token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          webhook: {
+            topic: 'orders/create',
+            address: webhookUrl,
+            format: 'json',
+          },
+        }),
+      });
+
+      const webhookData = whRes.ok ? await whRes.json() : null;
+      await kv.set(shopifyWebhookKey(bizId), JSON.stringify({
+        registered: whRes.ok,
+        webhook_id: webhookData?.webhook?.id || null,
+        url: webhookUrl,
+        registered_at: new Date().toISOString(),
+      }));
+    } catch (whErr) {
+      console.warn('Shopify webhook registration failed (non-fatal):', whErr.message);
+    }
 
     return res.writeHead(302, { Location: '/#settings?shopify=connected' }).end();
   } catch (err) {
@@ -489,6 +582,8 @@ async function handleShopifyDisconnect(req, res) {
   try {
     await kv.del(shopifyTokenKey(bizId));
     await kv.del(shopifyMetaKey(bizId));
+    await kv.del(shopifyWebhookKey(bizId));
+    await kv.del(shopifyLastAutoSyncKey(bizId));
     return res.status(200).json({ disconnected: true });
   } catch (err) {
     console.error('Shopify disconnect error:', err);
@@ -520,6 +615,132 @@ function mapShopifyOrder(order) {
       ? [order.shipping_address.address1, order.shipping_address.city, order.shipping_address.province, order.shipping_address.zip].filter(Boolean).join(', ')
       : '',
   };
+}
+
+// ══════════════════════════════════════════════════════
+// ── WEBHOOK HANDLERS ─────────────────────────────────
+// ══════════════════════════════════════════════════════
+
+async function handleEtsyWebhook(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const event = req.body;
+  console.log('Etsy webhook received:', JSON.stringify(event).slice(0, 500));
+
+  // In sandbox / missing API keys, just acknowledge
+  if (!process.env.ETSY_API_KEY) {
+    console.log('Etsy webhook (sandbox): event logged, no processing.');
+    return res.status(200).json({ received: true, sandbox: true });
+  }
+
+  try {
+    // Determine business from shop_id in the event payload
+    const shopId = event.shop_id || event.resource?.shop_id;
+    if (!shopId) {
+      console.warn('Etsy webhook: no shop_id in payload');
+      return res.status(200).json({ received: true, skipped: 'no_shop_id' });
+    }
+
+    const bizId = await kv.get(etsyShopLookupKey(shopId));
+    if (!bizId) {
+      console.warn('Etsy webhook: unknown shop_id', shopId);
+      return res.status(200).json({ received: true, skipped: 'unknown_shop' });
+    }
+
+    const tokenRaw = await kv.get(etsyTokenKey(bizId));
+    if (!tokenRaw) {
+      return res.status(200).json({ received: true, skipped: 'no_token' });
+    }
+    const token = typeof tokenRaw === 'string' ? JSON.parse(tokenRaw) : tokenRaw;
+
+    // Fetch the receipt details from Etsy API
+    const receiptId = event.receipt_id || event.resource?.receipt_id;
+    if (!receiptId) {
+      return res.status(200).json({ received: true, skipped: 'no_receipt_id' });
+    }
+
+    const apiKey = process.env.ETSY_API_KEY;
+    const receiptRes = await fetch(`https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${receiptId}`, {
+      headers: { Authorization: `Bearer ${token.access_token}`, 'x-api-key': apiKey },
+    });
+
+    if (!receiptRes.ok) {
+      console.error('Etsy webhook: failed to fetch receipt', receiptRes.status);
+      return res.status(200).json({ received: true, error: 'fetch_failed' });
+    }
+
+    const receipt = await receiptRes.json();
+    const order = mapEtsyOrder(receipt);
+
+    // Store the last auto-sync timestamp
+    await kv.set(etsyLastAutoSyncKey(bizId), new Date().toISOString());
+
+    console.log('Etsy webhook: processed order', order.orderNumber);
+    return res.status(200).json({ received: true, order: order.orderNumber });
+  } catch (err) {
+    console.error('Etsy webhook error:', err);
+    // Always return 200 to prevent Etsy from retrying endlessly
+    return res.status(200).json({ received: true, error: err.message });
+  }
+}
+
+async function handleShopifyWebhook(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const order = req.body;
+  console.log('Shopify webhook received:', JSON.stringify(order).slice(0, 500));
+
+  // In sandbox / missing API keys, just acknowledge
+  if (!process.env.SHOPIFY_API_SECRET) {
+    console.log('Shopify webhook (sandbox): event logged, no processing.');
+    return res.status(200).json({ received: true, sandbox: true });
+  }
+
+  // Verify HMAC signature
+  const hmacHeader = req.headers['x-shopify-hmac-sha256'];
+  if (hmacHeader) {
+    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    const computed = crypto
+      .createHmac('sha256', process.env.SHOPIFY_API_SECRET)
+      .update(rawBody, 'utf8')
+      .digest('base64');
+    if (computed !== hmacHeader) {
+      console.warn('Shopify webhook: HMAC verification failed');
+      return res.status(401).json({ error: 'Invalid HMAC signature' });
+    }
+  }
+
+  try {
+    // Determine business from shop domain
+    const shopDomain = req.headers['x-shopify-shop-domain'];
+    if (!shopDomain) {
+      console.warn('Shopify webhook: no shop domain in headers');
+      return res.status(200).json({ received: true, skipped: 'no_shop_domain' });
+    }
+
+    const bizId = await kv.get(shopifyDomainLookupKey(shopDomain));
+    if (!bizId) {
+      console.warn('Shopify webhook: unknown shop domain', shopDomain);
+      return res.status(200).json({ received: true, skipped: 'unknown_shop' });
+    }
+
+    // Map the order (Shopify sends full order data in webhook body)
+    const mappedOrder = mapShopifyOrder(order);
+
+    // Store the last auto-sync timestamp
+    await kv.set(shopifyLastAutoSyncKey(bizId), new Date().toISOString());
+
+    console.log('Shopify webhook: processed order', mappedOrder.orderNumber);
+    return res.status(200).json({ received: true, order: mappedOrder.orderNumber });
+  } catch (err) {
+    console.error('Shopify webhook error:', err);
+    // Always return 200 to prevent Shopify from retrying endlessly
+    return res.status(200).json({ received: true, error: err.message });
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -661,11 +882,16 @@ async function handleStatus(req, res) {
       const meta = await kv.get(etsyMetaKey(bizId));
       const metaData = meta ? (typeof meta === 'string' ? JSON.parse(meta) : meta) : {};
       const tokenData = typeof etsyToken === 'string' ? JSON.parse(etsyToken) : etsyToken;
+      const etsyWh = await kv.get(etsyWebhookKey(bizId));
+      const etsyWhData = etsyWh ? (typeof etsyWh === 'string' ? JSON.parse(etsyWh) : etsyWh) : {};
+      const etsyLastSync = await kv.get(etsyLastAutoSyncKey(bizId));
       etsy = {
         connected: true,
         shop_name: metaData.shop_name || 'Etsy Shop',
         connected_at: metaData.connected_at,
         sandbox: !!tokenData.sandbox,
+        webhook_registered: !!etsyWhData.registered,
+        last_auto_sync: etsyLastSync || null,
       };
     }
   } catch (e) {
@@ -678,12 +904,17 @@ async function handleStatus(req, res) {
       const meta = await kv.get(shopifyMetaKey(bizId));
       const metaData = meta ? (typeof meta === 'string' ? JSON.parse(meta) : meta) : {};
       const tokenData = typeof shopifyToken === 'string' ? JSON.parse(shopifyToken) : shopifyToken;
+      const shopifyWh = await kv.get(shopifyWebhookKey(bizId));
+      const shopifyWhData = shopifyWh ? (typeof shopifyWh === 'string' ? JSON.parse(shopifyWh) : shopifyWh) : {};
+      const shopifyLastSync = await kv.get(shopifyLastAutoSyncKey(bizId));
       shopify = {
         connected: true,
         shop_name: metaData.shop_name || 'Shopify Store',
         shop_domain: metaData.shop_domain,
         connected_at: metaData.connected_at,
         sandbox: !!tokenData.sandbox,
+        webhook_registered: !!shopifyWhData.registered,
+        last_auto_sync: shopifyLastSync || null,
       };
     }
   } catch (e) {

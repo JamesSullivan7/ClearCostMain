@@ -1308,3 +1308,41 @@ input[type=checkbox].sw-toggle { width: 17px; height: 17px; accent-color: var(--
 .role-staff { background: var(--surface2); color: var(--text-muted); }
 .role-viewer { background: var(--surface2); color: var(--text-muted); opacity: 0.7; }
 .team-status-pending { font-size: 0.72rem; color: var(--warning); font-style: italic; }
+
+/* ── Auto-sync Indicator ──────────────────────────── */
+
+.channel-auto-sync { margin: 10px 0; display: flex; flex-direction: column; gap: 4px; }
+.auto-sync-indicator { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--text-muted); }
+.auto-sync-indicator.active { color: var(--success); }
+.auto-sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+.auto-sync-indicator.active .auto-sync-dot { background: var(--success); box-shadow: 0 0 6px rgba(126,200,154,0.5); animation: auto-sync-pulse 2s ease-in-out infinite; }
+@keyframes auto-sync-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.auto-sync-time { font-size: 0.7rem; color: var(--text-muted); opacity: 0.7; }
+
+/* ── Tutorial Overlay ─────────────────────────────── */
+
+.tutorial-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10000; pointer-events: all; }
+.tutorial-highlight { position: absolute; box-shadow: 0 0 0 9999px rgba(0,0,0,0.75); border: 2px solid var(--accent); border-radius: 8px; z-index: 10001; transition: all 0.4s cubic-bezier(0.16,1,0.3,1); pointer-events: none; }
+.tutorial-tooltip { position: absolute; background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; padding: 24px; max-width: 360px; z-index: 10002; box-shadow: 0 20px 60px rgba(0,0,0,0.5); pointer-events: all; }
+.tutorial-tooltip.center { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 440px; text-align: center; }
+.tutorial-step-num { font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+.tutorial-title { font-size: 1.1rem; color: var(--text); margin: 0 0 8px 0; }
+.tutorial-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin: 0 0 20px 0; }
+.tutorial-actions { display: flex; justify-content: space-between; align-items: center; }
+.tutorial-btn-next { background: var(--accent); color: var(--bg); border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: var(--font-ui); }
+.tutorial-btn-next:hover { opacity: 0.85; }
+.tutorial-btn-prev { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-right: 8px; font-family: var(--font-ui); }
+.tutorial-btn-prev:hover { border-color: var(--accent-dim); color: var(--text); }
+.tutorial-btn-skip { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.8rem; text-decoration: underline; font-family: var(--font-ui); }
+.tutorial-btn-skip:hover { color: var(--text); }
+.tutorial-dots { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
+.tutorial-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background 0.2s; }
+.tutorial-dot.active { background: var(--accent); }
+.tutorial-btn-start { background: var(--accent); color: var(--bg); border: none; padding: 10px 28px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; font-family: var(--font-ui); margin-top: 4px; }
+.tutorial-btn-start:hover { opacity: 0.85; }
+
+/* ── Take Tour Button (Dashboard) ─────────────────── */
+
+.take-tour-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: var(--bg); border: none; padding: 10px 22px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: var(--font-ui); letter-spacing: 0.04em; transition: opacity 0.2s, transform 0.15s; margin-bottom: 16px; }
+.take-tour-btn:hover { opacity: 0.85; }
+.take-tour-btn:active { transform: scale(0.97); }
