@@ -95,6 +95,7 @@ async function handleCreateCheckout(req, res, userId, businessId) {
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: isLifetime ? 'payment' : 'subscription',
+      allow_promotion_codes: true,
       success_url: `${SITE_URL}/#settings?billing=success`,
       cancel_url: `${SITE_URL}/#settings?billing=cancelled`,
       metadata: { business_id: businessId, tier: tier },
