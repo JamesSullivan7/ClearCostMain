@@ -43,6 +43,17 @@ export function getCachedSession() { return currentSession; }
 // ── Auth Headers (for API calls) ────────────────────
 
 export function getAuthHeaders() {
+  // Read token from Supabase's own localStorage entry for reliability
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        const data = JSON.parse(localStorage.getItem(key));
+        const token = data?.access_token;
+        if (token) return { 'Authorization': `Bearer ${token}` };
+      }
+    }
+  } catch {}
+  // Fallback to in-memory session
   const token = currentSession?.access_token;
   if (!token) return {};
   return { 'Authorization': `Bearer ${token}` };
