@@ -52,7 +52,6 @@ export async function addProduct(data) {
   const record = {
     name: data.name,
     quantity: data.quantity || 0,
-    status: 'in-stock',
     needsMade: data.needsMade || false,
     inProduction: data.inProduction || false,
     lowThreshold: data.lowThreshold ?? null,
