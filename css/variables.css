@@ -34,19 +34,4 @@
   --shadow-lift: 0 12px 40px -10px rgba(0,0,0,0.55), 0 0 0 1px var(--accent-dim);
 }
 
-/* Auto light mode when user hasn't manually chosen (config.js overrides at runtime) */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme-set]) {
-    --bg: #f5f3f0;
-    --surface: #ffffff;
-    --surface2: #f0ede8;
-    --border: #d8d0c8;
-    --text: #1a1612;
-    --text-muted: #6a6058;
-    --danger-bg: #fde8e8;
-    --warning-bg: #fdf3e0;
-    --success-bg: #e0f5ea;
-    --shadow-card: 0 2px 16px -4px rgba(0,0,0,0.1);
-    --shadow-lift: 0 12px 40px -10px rgba(0,0,0,0.15), 0 0 0 1px var(--accent-dim);
-  }
-}
+/* Light mode is available via the Settings toggle (config.js applies LIGHT_OVERRIDES at runtime) */
