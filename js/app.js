@@ -301,8 +301,8 @@ async function loadApp() {
   await checkPendingInvites();
   currentUserRole = await getCurrentUserRole();
 
-  // Load all data
-  await Promise.all([
+  // Load all data (settle all — don't let one failure block the rest)
+  const results = await Promise.allSettled([
     products.loadProducts(),
     materials.loadMaterials(),
     history.loadHistory(),
@@ -319,6 +319,8 @@ async function loadApp() {
     sales.loadSales(),
     snapshots.loadSnapshots(),
   ]);
+  const failed = results.filter(r => r.status === 'rejected');
+  if (failed.length > 0) console.warn(`${failed.length} store(s) failed to load:`, failed.map(r => r.reason?.message));
 
   // Register stores for cost analysis UI
   registerStores({ getAllProducts: products.getAllProducts });

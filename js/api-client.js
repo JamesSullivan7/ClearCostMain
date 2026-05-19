@@ -17,9 +17,12 @@ async function apiFetch(url, options = {}) {
   const res = await fetch(url, { ...options, headers });
 
   if (res.status === 401) {
-    // Session expired — reload to show login
-    console.warn('Session expired, reloading...');
-    location.reload();
+    // Session expired — only reload once to avoid loop
+    if (!window.__clearcost_reloading) {
+      window.__clearcost_reloading = true;
+      console.warn('Session expired, reloading...');
+      location.reload();
+    }
     throw new Error('Session expired');
   }
 
