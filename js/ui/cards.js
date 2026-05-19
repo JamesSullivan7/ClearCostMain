@@ -30,6 +30,7 @@ export function renderProductCard(item) {
   return `
     <div class="card ${status}" data-product-id="${item.id}">
       <div class="card-header">
+        <input type="checkbox" class="bulk-check" data-type="product" data-id="${item.id}" />
         <div>
           <div class="candle-name">${escHtml(item.name)}${locBadge}</div>
           ${item.note ? `<div class="candle-note">${escHtml(item.note)}</div>` : ''}
@@ -76,6 +77,7 @@ export function renderMaterialCard(item) {
   return `
     <div class="mat-card ${status === 'out' ? 'mat-low' : status === 'low' ? 'mat-warn' : 'mat-ok'}" data-material-id="${item.id}">
       <div class="mat-card-header">
+        <input type="checkbox" class="bulk-check" data-type="material" data-id="${item.id}" />
         <div style="flex:1;min-width:0;">
           <div class="mat-name">${escHtml(item.name)}${matLocBadge}</div>
           <div class="mat-recipe" style="font-size:0.72rem;color:var(--text-muted);margin-top:3px;">${escHtml(item.category)}</div>

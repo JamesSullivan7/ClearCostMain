@@ -59,7 +59,10 @@ async function authenticate(req) {
  * Create a Supabase client scoped to a user's JWT (for RLS)
  */
 function createUserClient(token) {
-  return createClient(SUPABASE_URL, process.env.SUPABASE_ANON_KEY || SUPABASE_SERVICE_KEY, {
+  if (!process.env.SUPABASE_ANON_KEY) {
+    throw new Error('SUPABASE_ANON_KEY is not configured');
+  }
+  return createClient(SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
     global: {
       headers: { Authorization: `Bearer ${token}` },
     },

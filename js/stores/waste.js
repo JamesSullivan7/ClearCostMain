@@ -1,6 +1,6 @@
 // ── Waste / Shrinkage Store ──────────────────────────
 
-import { apiList, apiCreate, apiDelete } from '../api-client.js';
+import { apiList, apiCreate, apiDelete, apiUpdate } from '../api-client.js';
 
 let wasteEntries = [];
 
@@ -27,6 +27,14 @@ export async function logWaste(data) {
   const created = await apiCreate('waste', record);
   wasteEntries.unshift(created);
   return created;
+}
+
+export async function updateWaste(id, updates) {
+  const item = wasteEntries.find(w => w.id === id);
+  if (!item) return null;
+  const updated = await apiUpdate('waste', id, updates);
+  Object.assign(item, updated);
+  return item;
 }
 
 export async function deleteWasteEntry(id) {

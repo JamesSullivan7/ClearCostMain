@@ -8,7 +8,8 @@ const { authenticate, getServiceClient, createUserClient } = require('./_lib/aut
 
 module.exports = async (req, res) => {
   // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const SITE_URL = process.env.SITE_URL || 'https://clearcostinventory.com';
+  res.setHeader('Access-Control-Allow-Origin', SITE_URL);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();

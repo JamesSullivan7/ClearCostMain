@@ -75,6 +75,12 @@ export async function apiBatch(store, records) {
   });
 }
 
+export async function apiClear(store) {
+  return apiFetch(`${API_BASE}?store=${store}&action=clear`, {
+    method: 'POST',
+  });
+}
+
 export async function apiGetProfile() {
   return apiFetch(`${API_BASE}?store=businesses&action=profile`);
 }

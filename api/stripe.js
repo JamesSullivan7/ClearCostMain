@@ -10,7 +10,7 @@ const { authenticate, getServiceClient } = require('./_lib/auth');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
-const SITE_URL = process.env.SITE_URL || 'https://inventory-app-eight-delta.vercel.app';
+const SITE_URL = process.env.SITE_URL || 'https://clearcostinventory.com';
 
 // Price IDs (set these after creating products in Stripe Dashboard)
 const PRICE_IDS = {
@@ -163,17 +163,17 @@ async function handleWebhook(req, res) {
   let event;
 
   // Verify webhook signature if secret is configured
-  if (WEBHOOK_SECRET) {
-    const sig = req.headers['stripe-signature'];
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig, WEBHOOK_SECRET);
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err.message);
-      return res.status(400).json({ error: 'Invalid signature' });
-    }
-  } else {
-    // In test mode without webhook secret, parse directly
-    event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  if (!WEBHOOK_SECRET) {
+    console.error('STRIPE_WEBHOOK_SECRET is not configured — rejecting webhook');
+    return res.status(500).json({ error: 'Webhook secret not configured' });
+  }
+
+  const sig = req.headers['stripe-signature'];
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).json({ error: 'Invalid signature' });
   }
 
   const supabase = getServiceClient();

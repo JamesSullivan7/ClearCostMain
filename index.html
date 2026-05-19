@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inventory Manager</title>
+  <title>ClearCost Inventory</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
@@ -21,16 +21,16 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <!-- Analytics: Replace data-domain with your actual domain when going live -->
-  <!-- Analytics: Uncomment when Plausible account is set up -->
-  <!-- <script defer data-domain="clearcostinventory.com" src="https://plausible.io/js/script.js"></script> -->
+  <script defer data-domain="clearcostinventory.com" src="https://plausible.io/js/script.js"></script>
 </head>
 <body>
+
+<a href="#page-dashboard" class="skip-link">Skip to content</a>
 
 <header>
   <div class="brand">
     <div id="brand-logo"></div>
-    <h1 id="brand-name">Inventory Manager<span id="brand-sub">Loading...</span></h1>
+    <h1 id="brand-name">ClearCost<span id="brand-sub">Loading...</span></h1>
   </div>
   <div class="header-stats">
     <div class="stat" id="stat-total">
@@ -227,18 +227,5 @@
 
 <script type="module" src="/js/app.js?v=16"></script>
 
-<!--Start of Tawk.to Script-->
-<script type="text/javascript">
-var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-(function(){
-var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-s1.async=true;
-s1.src='https://embed.tawk.to/69decf009191331c2d187448/1jm75h6gf';
-s1.charset='UTF-8';
-s1.setAttribute('crossorigin','*');
-s0.parentNode.insertBefore(s1,s0);
-})();
-</script>
-<!--End of Tawk.to Script-->
 </body>
 </html>

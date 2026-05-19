@@ -9,21 +9,37 @@
 const { plaidClient } = require('./_lib/plaid-client');
 const { Products, CountryCode } = require('plaid');
 const { kv } = require('@vercel/kv');
+const { authenticate } = require('./_lib/auth');
 
 module.exports = async (req, res) => {
+  const SITE_URL = process.env.SITE_URL || 'https://clearcostinventory.com';
+  res.setHeader('Access-Control-Allow-Origin', SITE_URL);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  let userId, businessId;
+  try {
+    const auth = await authenticate(req);
+    userId = auth.userId;
+    businessId = auth.businessId;
+  } catch (err) {
+    return res.status(err.status || 401).json({ error: err.message });
+  }
+
   const action = req.query.action || req.body?.action;
 
   switch (action) {
     case 'link-token':
-      return handleLinkToken(req, res);
+      return handleLinkToken(req, res, businessId);
     case 'exchange':
-      return handleExchange(req, res);
+      return handleExchange(req, res, businessId);
     case 'sync':
-      return handleSync(req, res);
+      return handleSync(req, res, businessId);
     case 'accounts':
-      return handleAccounts(req, res);
+      return handleAccounts(req, res, businessId);
     case 'remove':
-      return handleRemove(req, res);
+      return handleRemove(req, res, businessId);
     default:
       return res.status(400).json({ error: `Unknown action: ${action}` });
   }
@@ -31,15 +47,15 @@ module.exports = async (req, res) => {
 
 // ── link-token ─────────────────────────────────────────
 
-async function handleLinkToken(req, res) {
+async function handleLinkToken(req, res, businessId) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const response = await plaidClient.linkTokenCreate({
-      user: { client_user_id: 'default-user' },
-      client_name: 'Inventory Manager',
+      user: { client_user_id: businessId },
+      client_name: 'ClearCost',
       products: [Products.Transactions],
       language: 'en',
       country_codes: [CountryCode.Us],
@@ -60,7 +76,7 @@ async function handleLinkToken(req, res) {
 
 // ── exchange ───────────────────────────────────────────
 
-async function handleExchange(req, res) {
+async function handleExchange(req, res, businessId) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -78,10 +94,10 @@ async function handleExchange(req, res) {
     const { access_token, item_id } = response.data;
 
     // Store access token in KV (never expose to client)
-    await kv.set(`plaid:access_token:${item_id}`, access_token);
+    await kv.set(`plaid:${businessId}:access_token:${item_id}`, access_token);
 
     // Track this item in the linked items set
-    await kv.sadd('plaid:linked_items', item_id);
+    await kv.sadd(`plaid:${businessId}:linked_items`, item_id);
 
     // Get institution info for display
     const itemResponse = await plaidClient.itemGet({ access_token });
@@ -101,7 +117,7 @@ async function handleExchange(req, res) {
     }
 
     // Store institution info
-    await kv.set(`plaid:institution:${item_id}`, JSON.stringify({
+    await kv.set(`plaid:${businessId}:institution:${item_id}`, JSON.stringify({
       institution_id: institutionId,
       institution_name: institutionName,
       linked_at: new Date().toISOString(),
@@ -172,7 +188,7 @@ function mapTransaction(plaidTxn) {
   };
 }
 
-async function handleSync(req, res) {
+async function handleSync(req, res, businessId) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -184,13 +200,13 @@ async function handleSync(req, res) {
 
   try {
     // Get access token from KV
-    const access_token = await kv.get(`plaid:access_token:${item_id}`);
+    const access_token = await kv.get(`plaid:${businessId}:access_token:${item_id}`);
     if (!access_token) {
       return res.status(404).json({ error: 'Item not found. Please re-link your account.' });
     }
 
     // Get last cursor (null for first sync)
-    let cursor = await kv.get(`plaid:cursor:${item_id}`) || undefined;
+    let cursor = await kv.get(`plaid:${businessId}:cursor:${item_id}`) || undefined;
 
     const allAdded = [];
     const allModified = [];
@@ -217,11 +233,11 @@ async function handleSync(req, res) {
 
     // Save new cursor for next sync
     if (cursor) {
-      await kv.set(`plaid:cursor:${item_id}`, cursor);
+      await kv.set(`plaid:${businessId}:cursor:${item_id}`, cursor);
     }
 
     // Save last sync timestamp
-    await kv.set(`plaid:last_sync:${item_id}`, new Date().toISOString());
+    await kv.set(`plaid:${businessId}:last_sync:${item_id}`, new Date().toISOString());
 
     return res.status(200).json({
       added: allAdded,
@@ -240,14 +256,14 @@ async function handleSync(req, res) {
 
 // ── accounts ───────────────────────────────────────────
 
-async function handleAccounts(req, res) {
+async function handleAccounts(req, res, businessId) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     // Get all linked item IDs
-    const itemIds = await kv.smembers('plaid:linked_items');
+    const itemIds = await kv.smembers(`plaid:${businessId}:linked_items`);
     if (!itemIds || itemIds.length === 0) {
       return res.status(200).json({ accounts: [] });
     }
@@ -255,15 +271,15 @@ async function handleAccounts(req, res) {
     const allAccounts = [];
 
     for (const itemId of itemIds) {
-      const accessToken = await kv.get(`plaid:access_token:${itemId}`);
+      const accessToken = await kv.get(`plaid:${businessId}:access_token:${itemId}`);
       if (!accessToken) continue;
 
       // Get institution info from cache
-      const instInfoRaw = await kv.get(`plaid:institution:${itemId}`);
+      const instInfoRaw = await kv.get(`plaid:${businessId}:institution:${itemId}`);
       const instInfo = typeof instInfoRaw === 'string' ? JSON.parse(instInfoRaw) : instInfoRaw || {};
 
       // Get last sync time
-      const lastSync = await kv.get(`plaid:last_sync:${itemId}`);
+      const lastSync = await kv.get(`plaid:${businessId}:last_sync:${itemId}`);
 
       try {
         // Get accounts from Plaid
@@ -310,7 +326,7 @@ async function handleAccounts(req, res) {
 
 // ── remove ─────────────────────────────────────────────
 
-async function handleRemove(req, res) {
+async function handleRemove(req, res, businessId) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -322,7 +338,7 @@ async function handleRemove(req, res) {
 
   try {
     // Get access token
-    const accessToken = await kv.get(`plaid:access_token:${item_id}`);
+    const accessToken = await kv.get(`plaid:${businessId}:access_token:${item_id}`);
 
     // Remove from Plaid (if we have a valid token)
     if (accessToken) {
@@ -335,11 +351,11 @@ async function handleRemove(req, res) {
     }
 
     // Clean up all KV entries for this item
-    await kv.del(`plaid:access_token:${item_id}`);
-    await kv.del(`plaid:cursor:${item_id}`);
-    await kv.del(`plaid:institution:${item_id}`);
-    await kv.del(`plaid:last_sync:${item_id}`);
-    await kv.srem('plaid:linked_items', item_id);
+    await kv.del(`plaid:${businessId}:access_token:${item_id}`);
+    await kv.del(`plaid:${businessId}:cursor:${item_id}`);
+    await kv.del(`plaid:${businessId}:institution:${item_id}`);
+    await kv.del(`plaid:${businessId}:last_sync:${item_id}`);
+    await kv.srem(`plaid:${businessId}:linked_items`, item_id);
 
     return res.status(200).json({ success: true, item_id });
   } catch (error) {

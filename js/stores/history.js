@@ -1,7 +1,7 @@
 // ── History Store ─────────────────────────────────────
 // Unified audit trail for all inventory changes.
 
-import { apiList, apiCreate, apiDelete } from '../api-client.js';
+import { apiList, apiCreate, apiDelete, apiClear } from '../api-client.js';
 
 let historyCache = [];
 const MAX_ENTRIES = 1000;
@@ -48,10 +48,7 @@ export async function addEntry(entry) {
 }
 
 export async function clearHistory() {
-  // Delete all entries via API
-  for (const entry of historyCache) {
-    await apiDelete('history', entry.id);
-  }
+  await apiClear('history');
   historyCache = [];
   notify();
 }

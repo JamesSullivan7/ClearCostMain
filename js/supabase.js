@@ -2,8 +2,8 @@
 // Manages authentication and session state for multi-tenant SaaS.
 // Uses the Supabase CDN-loaded client (window.supabase).
 
-const SUPABASE_URL = 'https://dazonukhprkavlxgqdrn.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhem9udWtocHJrYXZseGdxZHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjkyMzUsImV4cCI6MjA5MDkwNTIzNX0.mKZdYKmx3xFa3TZLpTcs24sA4tW9gL1JHvETLVbOCHc';
+const SUPABASE_URL = window.__CLEARCOST_CONFIG__?.SUPABASE_URL || 'https://dazonukhprkavlxgqdrn.supabase.co';
+const SUPABASE_ANON_KEY = window.__CLEARCOST_CONFIG__?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhem9udWtocHJrYXZseGdxZHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjkyMzUsImV4cCI6MjA5MDkwNTIzNX0.mKZdYKmx3xFa3TZLpTcs24sA4tW9gL1JHvETLVbOCHc';
 
 let client = null;
 let currentSession = null;

@@ -13,17 +13,17 @@ const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
 const AUTH_URL = 'https://appcenter.intuit.com/connect/oauth2';
 const REVOKE_URL = 'https://developer.api.intuit.com/v2/oauth2/tokens/revoke';
 
-// KV keys
-const KV_TOKENS = 'qb:tokens';
-const KV_STATE = 'qb:oauth_state';
-const KV_LAST_SYNC = 'qb:last_sync';
-const KV_ID_MAP = 'qb:id_map'; // maps local IDs to QBO IDs
+// KV key helpers — scoped per business
+function kvTokens(bizId) { return 'qb:' + bizId + ':tokens'; }
+function kvState(bizId) { return 'qb:' + bizId + ':oauth_state'; }
+function kvLastSync(bizId) { return 'qb:' + bizId + ':last_sync'; }
+function kvIdMap(bizId) { return 'qb:' + bizId + ':id_map'; }
 
 /**
  * Get stored tokens from KV
  */
-async function getStoredTokens() {
-  const raw = await kv.get(KV_TOKENS);
+async function getStoredTokens(bizId) {
+  const raw = await kv.get(kvTokens(bizId));
   if (!raw) return null;
   return typeof raw === 'string' ? JSON.parse(raw) : raw;
 }
@@ -31,16 +31,16 @@ async function getStoredTokens() {
 /**
  * Store tokens in KV
  */
-async function storeTokens(tokens) {
-  await kv.set(KV_TOKENS, JSON.stringify(tokens));
+async function storeTokens(bizId, tokens) {
+  await kv.set(kvTokens(bizId), JSON.stringify(tokens));
 }
 
 /**
  * Ensure access token is valid, refresh if expired
  * Returns { access_token, realm_id } or throws
  */
-async function ensureValidToken() {
-  const tokens = await getStoredTokens();
+async function ensureValidToken(bizId) {
+  const tokens = await getStoredTokens(bizId);
   if (!tokens) throw new Error('QuickBooks not connected');
 
   const now = Date.now();
@@ -77,7 +77,7 @@ async function ensureValidToken() {
       realm_id: tokens.realm_id,
       company_name: tokens.company_name,
     };
-    await storeTokens(updated);
+    await storeTokens(bizId, updated);
 
     return { access_token: updated.access_token, realm_id: updated.realm_id };
   }
@@ -88,8 +88,8 @@ async function ensureValidToken() {
 /**
  * Get a configured QuickBooks API client with valid token
  */
-async function getQBClient() {
-  const { access_token, realm_id } = await ensureValidToken();
+async function getQBClient(bizId) {
+  const { access_token, realm_id } = await ensureValidToken(bizId);
   const useSandbox = QBO_ENV === 'sandbox';
 
   const qbo = new QuickBooks(
@@ -123,30 +123,30 @@ function qbPromise(qbo, method, ...args) {
 /**
  * Store an ID mapping (local ID → QBO ID)
  */
-async function setIdMapping(entityType, localId, qboId) {
-  await kv.hset(KV_ID_MAP, `${entityType}:${localId}`, String(qboId));
+async function setIdMapping(bizId, entityType, localId, qboId) {
+  await kv.hset(kvIdMap(bizId), `${entityType}:${localId}`, String(qboId));
 }
 
 /**
  * Get a QBO ID from a local ID
  */
-async function getQboId(entityType, localId) {
-  const id = await kv.hget(KV_ID_MAP, `${entityType}:${localId}`);
+async function getQboId(bizId, entityType, localId) {
+  const id = await kv.hget(kvIdMap(bizId), `${entityType}:${localId}`);
   return id ? String(id) : null;
 }
 
 /**
  * Set last sync timestamp
  */
-async function setLastSync(type) {
-  await kv.hset(KV_LAST_SYNC, type, new Date().toISOString());
+async function setLastSync(bizId, type) {
+  await kv.hset(kvLastSync(bizId), type, new Date().toISOString());
 }
 
 /**
  * Get last sync timestamp
  */
-async function getLastSync(type) {
-  return await kv.hget(KV_LAST_SYNC, type);
+async function getLastSync(bizId, type) {
+  return await kv.hget(kvLastSync(bizId), type);
 }
 
 module.exports = {
@@ -157,8 +157,10 @@ module.exports = {
   AUTH_URL,
   TOKEN_URL,
   REVOKE_URL,
-  KV_TOKENS,
-  KV_STATE,
+  kvTokens,
+  kvState,
+  kvLastSync,
+  kvIdMap,
   getStoredTokens,
   storeTokens,
   ensureValidToken,

@@ -33,6 +33,7 @@ const TABLE_MAP = {
   salesOrders: 'sales_orders',
   team: 'team_members',
   teamMembers: 'team_members',
+  dailySnapshots: 'daily_snapshots',
 };
 
 // camelCase → snake_case field mapping per store
@@ -56,6 +57,7 @@ const FIELD_MAPS = {
   salesOrders: { orderNumber: 'order_number', customerId: 'customer_id', lineItems: 'line_items', shippingCost: 'shipping_cost', shippingAddress: 'shipping_address', trackingNumber: 'tracking_number', paidAt: 'paid_at', shippedAt: 'shipped_at', deliveredAt: 'delivered_at', createdAt: 'created_at', updatedAt: 'updated_at' },
   team: { userId: 'user_id', invitedBy: 'invited_by', invitedAt: 'invited_at', acceptedAt: 'accepted_at', createdAt: 'created_at' },
   teamMembers: { userId: 'user_id', invitedBy: 'invited_by', invitedAt: 'invited_at', acceptedAt: 'accepted_at', createdAt: 'created_at' },
+  dailySnapshots: { businessId: 'business_id', createdAt: 'created_at' },
 };
 
 // Convert camelCase record to snake_case for Postgres
@@ -109,6 +111,12 @@ module.exports = async (req, res) => {
   const store = req.query.store;
   const action = req.query.action || (req.method === 'GET' ? 'list' : 'create');
   const recordId = req.query.id ? parseInt(req.query.id) : null;
+
+  // Block security-sensitive stores from generic CRUD
+  const BLOCKED_STORES = ['team', 'teamMembers', 'businesses'];
+  if (BLOCKED_STORES.includes(store) && action !== 'profile') {
+    return res.status(403).json({ error: 'This store cannot be accessed through the generic API' });
+  }
 
   const tableName = TABLE_MAP[store];
   if (!tableName) {
@@ -227,6 +235,17 @@ module.exports = async (req, res) => {
         return res.status(201).json(data.map(r => toCamel(store, r)));
       }
 
+      // ── CLEAR ALL (bulk delete for a store) ──
+      case 'clear': {
+        const { error } = await supabase
+          .from(tableName)
+          .delete()
+          .eq('business_id', businessId);
+
+        if (error) throw error;
+        return res.status(200).json({ success: true });
+      }
+
       // ── PROFILE (special: get/update business profile) ──
       case 'profile': {
         if (req.method === 'GET') {
@@ -237,7 +256,16 @@ module.exports = async (req, res) => {
           if (error) throw error;
           return res.status(200).json(toCamel('businesses', data));
         } else {
-          const updates = req.body;
+          const PROFILE_ALLOWED = ['name', 'type', 'currency', 'unit_system', 'product_label', 'product_label_plural', 'logo_url', 'favicon_url', 'theme', 'font', 'email_config', 'custom_fields', 'global_thresholds', 'ship_from_address'];
+          const raw = req.body;
+          const updates = {};
+          for (const key of Object.keys(raw)) {
+            if (PROFILE_ALLOWED.includes(key)) updates[key] = raw[key];
+          }
+          if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ error: 'No allowed fields to update' });
+          }
+          updates.updated_at = new Date().toISOString();
           const { data, error } = await supabase
             .from('businesses')
             .update(updates)

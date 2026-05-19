@@ -17,7 +17,7 @@ export function closeAllModals() {
 }
 
 // Generic form modal builder
-export function showFormModal({ title, fields, onSubmit, submitLabel = 'Save', id = 'modal-dynamic' }) {
+export function showFormModal({ title, fields, onSubmit, onCancel, submitLabel = 'Save', dangerSubmit = false, customBody = '', id = 'modal-dynamic' }) {
   // Remove existing dynamic modal
   const existing = document.getElementById(id);
   if (existing) existing.remove();
@@ -47,20 +47,27 @@ export function showFormModal({ title, fields, onSubmit, submitLabel = 'Save', i
     </div>`;
   }).join('');
 
+  const submitBtnClass = dangerSubmit ? 'btn-confirm btn-danger' : 'btn-confirm';
+
   overlay.innerHTML = `
     <div class="modal">
       <h2>${esc(title)}</h2>
-      ${fieldsHtml}
+      ${customBody || fieldsHtml}
       <div class="modal-actions">
         <button class="btn-cancel" data-action="cancel">Cancel</button>
-        <button class="btn-confirm" data-action="submit">${esc(submitLabel)}</button>
+        <button class="${submitBtnClass}" data-action="submit">${esc(submitLabel)}</button>
       </div>
     </div>
   `;
 
+  const dismiss = () => {
+    overlay.remove();
+    if (onCancel) onCancel();
+  };
+
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay || e.target.dataset.action === 'cancel') {
-      overlay.remove();
+      dismiss();
     }
     if (e.target.dataset.action === 'submit') {
       const values = {};
@@ -72,7 +79,11 @@ export function showFormModal({ title, fields, onSubmit, submitLabel = 'Save', i
         else if (f.type === 'checkbox') values[f.id] = el.checked;
         else values[f.id] = el.value.trim();
       }
-      if (onSubmit(values) !== false) {
+      const result = onSubmit(values);
+      // Support both sync and async onSubmit
+      if (result && typeof result.then === 'function') {
+        result.then(r => { if (r !== false) overlay.remove(); });
+      } else if (result !== false) {
         overlay.remove();
       }
     }
@@ -80,7 +91,7 @@ export function showFormModal({ title, fields, onSubmit, submitLabel = 'Save', i
 
   document.addEventListener('keydown', function handler(e) {
     if (e.key === 'Escape' && document.getElementById(id)) {
-      overlay.remove();
+      dismiss();
       document.removeEventListener('keydown', handler);
     }
   });
@@ -115,3 +126,33 @@ function esc(s) {
 }
 
 export { esc as escHtml };
+
+// ── Confirm / Prompt Modals ─────────────────────────
+
+export function showConfirmModal({ title, message, confirmLabel = 'Confirm', danger = false }) {
+  return new Promise(resolve => {
+    showFormModal({
+      title,
+      fields: [],
+      id: 'modal-confirm',
+      submitLabel: confirmLabel,
+      dangerSubmit: danger,
+      customBody: `<p style="color:var(--text);margin:0;line-height:1.5;white-space:pre-line;">${message}</p>`,
+      onSubmit() { resolve(true); },
+      onCancel() { resolve(false); },
+    });
+  });
+}
+
+export function showPromptModal({ title, message, placeholder = '', defaultValue = '' }) {
+  return new Promise(resolve => {
+    showFormModal({
+      title,
+      fields: [{ id: '_prompt_value', label: message, type: 'text', placeholder, value: defaultValue }],
+      id: 'modal-prompt',
+      submitLabel: 'OK',
+      onSubmit(vals) { resolve(vals['_prompt_value'] || ''); },
+      onCancel() { resolve(null); },
+    });
+  });
+}

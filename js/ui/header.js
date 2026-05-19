@@ -18,7 +18,7 @@ export function renderHeader() {
   const logoEl = document.getElementById('brand-logo');
 
   if (brandEl) brandEl.textContent = name;
-  if (brandSub) brandSub.textContent = 'Inventory Manager';
+  if (brandSub) brandSub.textContent = 'Inventory';
 
   if (logoEl) {
     if (logoURL) {
@@ -70,12 +70,3 @@ function setStatLabel(parentId, label) {
   if (el) el.textContent = label;
 }
 
-function defaultLogoSVG() {
-  return `<svg class="brand-icon" viewBox="0 0 40 40" fill="none" style="width:38px;height:38px;color:var(--accent)">
-    <rect x="4" y="8" width="32" height="24" rx="4" stroke="currentColor" stroke-width="2" fill="none"/>
-    <path d="M4 16h32" stroke="currentColor" stroke-width="2"/>
-    <rect x="10" y="21" width="8" height="6" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
-    <line x1="24" y1="22" x2="30" y2="22" stroke="currentColor" stroke-width="1.5"/>
-    <line x1="24" y1="26" x2="28" y2="26" stroke="currentColor" stroke-width="1.5"/>
-  </svg>`;
-}

@@ -101,6 +101,7 @@ export function renderTransactionsPage() {
               <td><span class="txn-type-badge ${typeClass}">${isIncome ? 'Income' : 'Expense'}</span></td>
               <td class="txn-source">${escHtml(txn.source)}</td>
               <td>
+                <button class="toggle-btn" data-action="edit-transaction" data-id="${txn.id}">Edit</button>
                 <button class="btn-delete" data-action="delete-transaction" data-id="${txn.id}" title="Remove">x</button>
               </td>
             </tr>`;

@@ -1,7 +1,7 @@
 {
-  "name": "Inventory Manager",
-  "short_name": "Inventory",
-  "description": "Universal inventory tracking platform for any business",
+  "name": "ClearCost Inventory",
+  "short_name": "ClearCost",
+  "description": "Inventory and cost management for small product businesses",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -28,14 +28,14 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Inventory Manager Dashboard"
+      "label": "ClearCost Dashboard"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Inventory Manager Mobile"
+      "label": "ClearCost Mobile"
     }
   ],
   "categories": ["business", "productivity"],

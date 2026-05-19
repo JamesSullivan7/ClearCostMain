@@ -16,8 +16,18 @@
 
 const { kv } = require('@vercel/kv');
 const crypto = require('crypto');
+const { authenticate } = require('./_lib/auth');
+
+const SITE_URL = process.env.SITE_URL || 'https://clearcostinventory.com';
+const stateSecret = process.env.OAUTH_STATE_SECRET || 'dev-secret';
 
 module.exports = async (req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', SITE_URL);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   const action = req.query.action || req.body?.action;
 
   switch (action) {
@@ -62,12 +72,11 @@ module.exports = async (req, res) => {
   }
 };
 
-// ── Helper: get business ID from request ───────────────
+// ── Helper: get authenticated business ID from request ──
 
-function getBusinessId(req) {
-  // In production, extract from auth token via authenticate()
-  // For MVP, use a header or default
-  return req.headers['x-business-id'] || 'default';
+async function getAuthenticatedBusinessId(req) {
+  const { businessId } = await authenticate(req);
+  return businessId;
 }
 
 // ── KV key helpers ─────────────────────────────────────
@@ -99,7 +108,7 @@ async function handleEtsyConnect(req, res) {
 
   if (!apiKey) {
     // Sandbox mode — simulate OAuth redirect
-    const bizId = getBusinessId(req);
+    const bizId = await getAuthenticatedBusinessId(req);
     await kv.set(etsyTokenKey(bizId), JSON.stringify({
       access_token: 'sandbox_etsy_token',
       refresh_token: 'sandbox_etsy_refresh',
@@ -121,7 +130,10 @@ async function handleEtsyConnect(req, res) {
   }
 
   // Real Etsy OAuth — redirect to Etsy authorization
-  const state = Buffer.from(JSON.stringify({ bizId: getBusinessId(req), ts: Date.now() })).toString('base64url');
+  const businessId = await getAuthenticatedBusinessId(req);
+  const statePayload = JSON.stringify({ bizId: businessId, ts: Date.now() });
+  const stateHmac = crypto.createHmac('sha256', stateSecret).update(statePayload).digest('hex');
+  const state = Buffer.from(statePayload).toString('base64url') + '.' + stateHmac;
   const scope = 'transactions_r shops_r';
   const authUrl = `https://www.etsy.com/oauth/connect?response_type=code&client_id=${apiKey}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}&code_challenge_method=S256`;
 
@@ -142,9 +154,19 @@ async function handleEtsyCallback(req, res) {
   try {
     const apiKey = process.env.ETSY_API_KEY;
     const redirectUri = process.env.ETSY_REDIRECT_URI || `${req.headers.origin || 'https://localhost'}/api/ecommerce?action=etsy-callback`;
-    let stateData;
-    try { stateData = JSON.parse(Buffer.from(state, 'base64url').toString()); } catch { stateData = {}; }
-    const bizId = stateData.bizId || 'default';
+
+    // Verify HMAC-signed state
+    const [payloadB64, hmac] = (state || '').split('.');
+    if (!payloadB64 || !hmac) {
+      return res.writeHead(302, { Location: '/#settings?etsy=error&msg=invalid_state' }).end();
+    }
+    const payload = Buffer.from(payloadB64, 'base64url').toString();
+    const expectedHmac = crypto.createHmac('sha256', stateSecret).update(payload).digest('hex');
+    if (hmac !== expectedHmac) {
+      return res.writeHead(302, { Location: '/#settings?etsy=error&msg=invalid_state' }).end();
+    }
+    const stateData = JSON.parse(payload);
+    const bizId = stateData.bizId;
 
     // Exchange code for token
     const tokenRes = await fetch('https://api.etsy.com/v3/public/oauth/token', {
@@ -224,7 +246,7 @@ async function handleEtsySync(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const bizId = getBusinessId(req);
+  const bizId = await getAuthenticatedBusinessId(req);
   const tokenRaw = await kv.get(etsyTokenKey(bizId));
 
   if (!tokenRaw) {
@@ -309,7 +331,7 @@ async function handleEtsyDisconnect(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const bizId = getBusinessId(req);
+  const bizId = await getAuthenticatedBusinessId(req);
 
   try {
     await kv.del(etsyTokenKey(bizId));
@@ -357,7 +379,7 @@ async function handleShopifyConnect(req, res) {
 
   const shopDomain = req.body?.shopDomain;
   const apiKey = process.env.SHOPIFY_API_KEY;
-  const bizId = getBusinessId(req);
+  const bizId = await getAuthenticatedBusinessId(req);
 
   if (!apiKey) {
     // Sandbox mode — simulate connection
@@ -389,7 +411,9 @@ async function handleShopifyConnect(req, res) {
 
   const redirectUri = `${req.headers.origin || 'https://localhost'}/api/ecommerce?action=shopify-callback`;
   const scopes = 'read_orders,read_products';
-  const state = Buffer.from(JSON.stringify({ bizId, ts: Date.now() })).toString('base64url');
+  const statePayload = JSON.stringify({ bizId, ts: Date.now() });
+  const stateHmac = crypto.createHmac('sha256', stateSecret).update(statePayload).digest('hex');
+  const state = Buffer.from(statePayload).toString('base64url') + '.' + stateHmac;
   const authUrl = `https://${shopDomain}/admin/oauth/authorize?client_id=${apiKey}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
 
   return res.status(200).json({ redirect: authUrl });
@@ -409,9 +433,19 @@ async function handleShopifyCallback(req, res) {
   try {
     const apiKey = process.env.SHOPIFY_API_KEY;
     const apiSecret = process.env.SHOPIFY_API_SECRET;
-    let stateData;
-    try { stateData = JSON.parse(Buffer.from(state, 'base64url').toString()); } catch { stateData = {}; }
-    const bizId = stateData.bizId || 'default';
+
+    // Verify HMAC-signed state
+    const [payloadB64, hmac] = (state || '').split('.');
+    if (!payloadB64 || !hmac) {
+      return res.writeHead(302, { Location: '/#settings?shopify=error&msg=invalid_state' }).end();
+    }
+    const payload = Buffer.from(payloadB64, 'base64url').toString();
+    const expectedHmac = crypto.createHmac('sha256', stateSecret).update(payload).digest('hex');
+    if (hmac !== expectedHmac) {
+      return res.writeHead(302, { Location: '/#settings?shopify=error&msg=invalid_state' }).end();
+    }
+    const stateData = JSON.parse(payload);
+    const bizId = stateData.bizId;
 
     // Exchange code for permanent token
     const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {
@@ -491,7 +525,7 @@ async function handleShopifySync(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const bizId = getBusinessId(req);
+  const bizId = await getAuthenticatedBusinessId(req);
   const tokenRaw = await kv.get(shopifyTokenKey(bizId));
 
   if (!tokenRaw) {
@@ -577,7 +611,7 @@ async function handleShopifyDisconnect(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const bizId = getBusinessId(req);
+  const bizId = await getAuthenticatedBusinessId(req);
 
   try {
     await kv.del(shopifyTokenKey(bizId));
@@ -700,18 +734,20 @@ async function handleShopifyWebhook(req, res) {
     return res.status(200).json({ received: true, sandbox: true });
   }
 
-  // Verify HMAC signature
+  // Verify HMAC signature (mandatory when secret is configured)
   const hmacHeader = req.headers['x-shopify-hmac-sha256'];
-  if (hmacHeader) {
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    const computed = crypto
-      .createHmac('sha256', process.env.SHOPIFY_API_SECRET)
-      .update(rawBody, 'utf8')
-      .digest('base64');
-    if (computed !== hmacHeader) {
-      console.warn('Shopify webhook: HMAC verification failed');
-      return res.status(401).json({ error: 'Invalid HMAC signature' });
-    }
+  if (!hmacHeader) {
+    console.warn('Shopify webhook: missing HMAC header');
+    return res.status(401).json({ error: 'Missing HMAC signature' });
+  }
+  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  const computed = crypto
+    .createHmac('sha256', process.env.SHOPIFY_API_SECRET)
+    .update(rawBody, 'utf8')
+    .digest('base64');
+  if (computed !== hmacHeader) {
+    console.warn('Shopify webhook: HMAC verification failed');
+    return res.status(401).json({ error: 'Invalid HMAC signature' });
   }
 
   try {
@@ -752,6 +788,7 @@ async function handleShippingRates(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  await getAuthenticatedBusinessId(req);
   const { from_address, to_address, parcel_weight, parcel_dimensions } = req.body || {};
 
   if (!process.env.EASYPOST_API_KEY) {
@@ -815,6 +852,7 @@ async function handleShippingLabel(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  await getAuthenticatedBusinessId(req);
   const { rate_id, shipment_id, from_address, to_address } = req.body || {};
 
   if (!process.env.EASYPOST_API_KEY) {
@@ -871,7 +909,7 @@ async function handleStatus(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const bizId = getBusinessId(req);
+  const bizId = await getAuthenticatedBusinessId(req);
 
   let etsy = { connected: false };
   let shopify = { connected: false };

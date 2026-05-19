@@ -222,7 +222,7 @@ export function label(key) {
 }
 
 export function businessName() {
-  return profile?.name || 'Inventory Manager';
+  return profile?.name || 'ClearCost';
 }
 
 // ── Theming ──────────────────────────────────────────
@@ -240,6 +240,7 @@ export function applyTheme(themeOverrides) {
   }
 
   const root = document.documentElement;
+  root.setAttribute('data-theme-set', '');
   root.style.setProperty('--bg', effective.bg);
   root.style.setProperty('--surface', effective.surface);
   root.style.setProperty('--surface2', effective.surface2);

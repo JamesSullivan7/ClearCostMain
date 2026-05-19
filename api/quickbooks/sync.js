@@ -6,6 +6,7 @@
 //   GET  ?action=accounts   — Fetch Chart of Accounts
 //   GET  ?action=report     — Fetch P&L report
 
+const { authenticate } = require('../_lib/auth');
 const {
   getQBClient, qbPromise, setIdMapping, getQboId, setLastSync, ensureValidToken,
 } = require('../_lib/quickbooks-client');
@@ -14,21 +15,47 @@ const QBO_ENV = process.env.QUICKBOOKS_ENV || 'sandbox';
 const BASE_URL = QBO_ENV === 'production'
   ? 'https://quickbooks.api.intuit.com'
   : 'https://sandbox-quickbooks.api.intuit.com';
+const SITE_URL = process.env.SITE_URL || '';
+
+function setCors(res) {
+  if (SITE_URL) {
+    res.setHeader('Access-Control-Allow-Origin', SITE_URL);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+}
 
 module.exports = async (req, res) => {
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    setCors(res);
+    return res.status(204).end();
+  }
+
+  setCors(res);
+
+  // Authenticate every request
+  let businessId;
+  try {
+    const auth = await authenticate(req);
+    businessId = auth.businessId;
+  } catch (error) {
+    return res.status(error.status || 401).json({ error: error.message });
+  }
+
   const action = req.query.action || req.body?.action;
 
   switch (action) {
     case 'products':
-      return handleSyncProducts(req, res);
+      return handleSyncProducts(req, res, businessId);
     case 'suppliers':
-      return handleSyncSuppliers(req, res);
+      return handleSyncSuppliers(req, res, businessId);
     case 'expenses':
-      return handleSyncExpenses(req, res);
+      return handleSyncExpenses(req, res, businessId);
     case 'accounts':
-      return handleFetchAccounts(req, res);
+      return handleFetchAccounts(req, res, businessId);
     case 'report':
-      return handleFetchReport(req, res);
+      return handleFetchReport(req, res, businessId);
     default:
       return res.status(400).json({ error: `Unknown action: ${action}` });
   }
@@ -36,7 +63,7 @@ module.exports = async (req, res) => {
 
 // ── sync-products ──────────────────────────────────────
 
-async function handleSyncProducts(req, res) {
+async function handleSyncProducts(req, res, businessId) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -47,7 +74,7 @@ async function handleSyncProducts(req, res) {
   }
 
   try {
-    const qbo = await getQBClient();
+    const qbo = await getQBClient(businessId);
     const results = { created: 0, updated: 0, errors: [] };
 
     // Get income account for sales (needed for QBO Items)
@@ -72,7 +99,7 @@ async function handleSyncProducts(req, res) {
 
     for (const product of products) {
       try {
-        const qboId = await getQboId('product', product.id);
+        const qboId = await getQboId(businessId, 'product', product.id);
 
         const itemData = {
           Name: (product.name || 'Unnamed').substring(0, 100),
@@ -107,13 +134,13 @@ async function handleSyncProducts(req, res) {
             delete itemData.SyncToken;
             delete itemData.sparse;
             const created = await qbPromise(qbo, 'createItem', itemData);
-            await setIdMapping('product', product.id, created.Id);
+            await setIdMapping(businessId, 'product', product.id, created.Id);
             results.created++;
           }
         } else {
           // Create new
           const created = await qbPromise(qbo, 'createItem', itemData);
-          await setIdMapping('product', product.id, created.Id);
+          await setIdMapping(businessId, 'product', product.id, created.Id);
           results.created++;
         }
       } catch (err) {
@@ -125,7 +152,7 @@ async function handleSyncProducts(req, res) {
       }
     }
 
-    await setLastSync('products');
+    await setLastSync(businessId, 'products');
     return res.status(200).json(results);
   } catch (error) {
     console.error('Sync products error:', error.message);
@@ -135,7 +162,7 @@ async function handleSyncProducts(req, res) {
 
 // ── sync-suppliers ─────────────────────────────────────
 
-async function handleSyncSuppliers(req, res) {
+async function handleSyncSuppliers(req, res, businessId) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -146,12 +173,12 @@ async function handleSyncSuppliers(req, res) {
   }
 
   try {
-    const qbo = await getQBClient();
+    const qbo = await getQBClient(businessId);
     const results = { created: 0, updated: 0, errors: [] };
 
     for (const supplier of suppliers) {
       try {
-        const qboId = await getQboId('supplier', supplier.id);
+        const qboId = await getQboId(businessId, 'supplier', supplier.id);
 
         // Parse contact name into first/last
         const nameParts = (supplier.contactName || '').split(' ');
@@ -185,12 +212,12 @@ async function handleSyncSuppliers(req, res) {
             delete vendorData.SyncToken;
             delete vendorData.sparse;
             const created = await qbPromise(qbo, 'createVendor', vendorData);
-            await setIdMapping('supplier', supplier.id, created.Id);
+            await setIdMapping(businessId, 'supplier', supplier.id, created.Id);
             results.created++;
           }
         } else {
           const created = await qbPromise(qbo, 'createVendor', vendorData);
-          await setIdMapping('supplier', supplier.id, created.Id);
+          await setIdMapping(businessId, 'supplier', supplier.id, created.Id);
           results.created++;
         }
       } catch (err) {
@@ -202,7 +229,7 @@ async function handleSyncSuppliers(req, res) {
       }
     }
 
-    await setLastSync('suppliers');
+    await setLastSync(businessId, 'suppliers');
     return res.status(200).json(results);
   } catch (error) {
     console.error('Sync suppliers error:', error.message);
@@ -227,7 +254,7 @@ const CATEGORY_ACCOUNT_MAP = {
   other: 'Miscellaneous Expense',
 };
 
-async function handleSyncExpenses(req, res) {
+async function handleSyncExpenses(req, res, businessId) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -238,7 +265,7 @@ async function handleSyncExpenses(req, res) {
   }
 
   try {
-    const qbo = await getQBClient();
+    const qbo = await getQBClient(businessId);
     const results = { created: 0, errors: [] };
 
     // Fetch available expense accounts
@@ -319,7 +346,7 @@ async function handleSyncExpenses(req, res) {
       }
     }
 
-    await setLastSync('expenses');
+    await setLastSync(businessId, 'expenses');
     return res.status(200).json(results);
   } catch (error) {
     console.error('Sync expenses error:', error.message);
@@ -329,13 +356,13 @@ async function handleSyncExpenses(req, res) {
 
 // ── fetch-accounts ─────────────────────────────────────
 
-async function handleFetchAccounts(req, res) {
+async function handleFetchAccounts(req, res, businessId) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const qbo = await getQBClient();
+    const qbo = await getQBClient(businessId);
     const result = await qbPromise(qbo, 'findAccounts', {});
 
     const accounts = (result?.QueryResponse?.Account || []).map(acct => ({
@@ -357,13 +384,13 @@ async function handleFetchAccounts(req, res) {
 
 // ── fetch-report ───────────────────────────────────────
 
-async function handleFetchReport(req, res) {
+async function handleFetchReport(req, res, businessId) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { access_token, realm_id } = await ensureValidToken();
+    const { access_token, realm_id } = await ensureValidToken(businessId);
 
     // Date range: default to current month, or use query params
     const now = new Date();

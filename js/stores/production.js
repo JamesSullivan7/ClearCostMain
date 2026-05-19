@@ -1,7 +1,7 @@
 // ── Production Store ─────────────────────────────────
 // Production runs and achievement/milestone tracking.
 
-import { apiList, apiCreate, apiUpsert } from '../api-client.js';
+import { apiList, apiCreate, apiUpsert, apiUpdate, apiDelete } from '../api-client.js';
 import { getProfile } from '../config.js';
 
 let runs = [];
@@ -48,6 +48,25 @@ export async function logRun(data) {
   await apiUpsert('settings', { key: 'totalProduced', value: totalProduced });
   notify();
   return created;
+}
+
+export async function updateRun(id, updates) {
+  const run = runs.find(r => r.id === id);
+  if (!run) return null;
+  const updated = await apiUpdate('production', id, updates);
+  Object.assign(run, updated);
+  notify();
+  return run;
+}
+
+export async function deleteRun(id) {
+  const run = runs.find(r => r.id === id);
+  if (!run) return;
+  await apiDelete('production', id);
+  totalProduced -= run.quantity;
+  runs = runs.filter(r => r.id !== id);
+  await apiUpsert('settings', { key: 'totalProduced', value: totalProduced });
+  notify();
 }
 
 export async function setTotalProduced(val) {
