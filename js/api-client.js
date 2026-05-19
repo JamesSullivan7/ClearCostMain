@@ -17,10 +17,11 @@ async function apiFetch(url, options = {}) {
   const res = await fetch(url, { ...options, headers });
 
   if (res.status === 401) {
-    // Session expired — only reload once to avoid loop
-    if (!window.__clearcost_reloading) {
-      window.__clearcost_reloading = true;
-      console.warn('Session expired, reloading...');
+    // Session expired — clear auth and reload once
+    if (!sessionStorage.getItem('_cc_auth_reload')) {
+      sessionStorage.setItem('_cc_auth_reload', '1');
+      console.warn('Session expired, clearing and reloading...');
+      try { localStorage.removeItem('clearcost-auth'); } catch {}
       location.reload();
     }
     throw new Error('Session expired');
