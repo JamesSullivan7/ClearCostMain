@@ -403,6 +403,27 @@ input[type=checkbox].sw-toggle { width: 17px; height: 17px; accent-color: var(--
   /* Expense items */
   .expense-item { flex-wrap: wrap; }
   .expense-item-actions { margin-left: 0; margin-top: 8px; }
+
+  /* Undo button */
+  .undo-btn { bottom: 16px; right: 16px; padding: 8px 16px; font-size: 0.8rem; }
+
+  /* Bulk action bar */
+  .bulk-bar { padding: 10px 16px; }
+
+  /* Pagination */
+  .pagination { gap: 2px; }
+  .page-btn { padding: 8px 10px; font-size: 0.75rem; }
+  .page-info { font-size: 0.7rem; margin-left: 8px; }
+
+  /* Trend chart */
+  .trend-chart { height: 80px; }
+  .trend-label { font-size: 0.55rem; }
+  .trend-value { font-size: 0.55rem; }
+
+  /* Help page */
+  .help-search { width: 100%; }
+  .help-question { font-size: 0.9rem; padding: 12px; }
+  .help-answer p { font-size: 0.85rem; }
 }
 
 /* ── Cost Analysis & Expenses ─────────────────────── */
