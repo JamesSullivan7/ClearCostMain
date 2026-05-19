@@ -95,6 +95,6 @@ export function renderHelpPage() {
         const hasVisible = Array.from(sec.querySelectorAll('.help-item')).some(i => i.style.display !== 'none');
         sec.style.display = hasVisible ? '' : 'none';
       });
-    });
+    };
   }
 }
