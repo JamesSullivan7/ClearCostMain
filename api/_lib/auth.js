@@ -3,8 +3,8 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim();
+const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
 let serviceClient = null;
 
@@ -59,10 +59,11 @@ async function authenticate(req) {
  * Create a Supabase client scoped to a user's JWT (for RLS)
  */
 function createUserClient(token) {
-  if (!process.env.SUPABASE_ANON_KEY) {
+  const anonKey = (process.env.SUPABASE_ANON_KEY || '').trim();
+  if (!anonKey) {
     throw new Error('SUPABASE_ANON_KEY is not configured');
   }
-  return createClient(SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+  return createClient(SUPABASE_URL, anonKey, {
     global: {
       headers: { Authorization: `Bearer ${token}` },
     },
