@@ -5,6 +5,7 @@ import { getProductStatus, getStatusBadge as getProductBadge } from '../stores/p
 import { getMaterialStatus, getStatusBadge as getMaterialBadge, getAllMaterials } from '../stores/materials.js';
 import { getRecipeForProduct, calculateRecipeCost } from '../stores/recipes.js';
 import { getLocationById } from '../stores/locations.js';
+import { getPhotoUrl } from '../services/photos.js';
 
 // ── Product Card ─────────────────────────────────────
 
@@ -27,8 +28,11 @@ export function renderProductCard(item) {
   const loc = item.locationId ? getLocationById(item.locationId) : null;
   const locBadge = loc ? `<span class="location-badge">${escHtml(loc.name)}</span>` : '';
 
+  const photoUrl = getPhotoUrl(item.photoId);
+
   return `
     <div class="card ${status}" data-product-id="${item.id}">
+      ${photoUrl ? `<img src="${photoUrl}" alt="" class="card-photo" />` : ''}
       <div class="card-header">
         <input type="checkbox" class="bulk-check" data-type="product" data-id="${item.id}" />
         <div>

@@ -81,6 +81,8 @@
 .card.low-stock::before, .card.out-of-stock::before { animation: pulse 1.8s ease-in-out infinite; }
 .card.needs-made::before { animation: breathe 2.8s ease-in-out infinite; }
 
+.card-photo { width: 100%; height: 140px; object-fit: cover; border-radius: 8px; margin-bottom: 12px; }
+
 .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; gap: 8px; }
 .candle-name { font-size: 1.1rem; letter-spacing: 0.06em; color: var(--text); }
 .candle-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; font-style: italic; }
@@ -1400,3 +1402,30 @@ input[type=checkbox].sw-toggle { width: 17px; height: 17px; accent-color: var(--
 .trend-bar { width: 100%; max-width: 32px; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; transition: height 0.3s; }
 .trend-label { font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; white-space: nowrap; }
 .trend-value { position: absolute; top: -16px; font-size: 0.65rem; color: var(--accent); }
+
+/* ── Undo Button ────────────────────────────────── */
+
+.undo-btn {
+  position: fixed; bottom: 24px; right: 24px; z-index: 100;
+  background: var(--accent); color: var(--bg); border: none;
+  padding: 10px 20px; border-radius: 8px; cursor: pointer;
+  font-family: var(--font-ui); font-size: 0.85rem; font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.undo-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* ── Pagination ─────────────────────────────────── */
+
+.pagination { display: flex; align-items: center; gap: 4px; margin-top: 20px; justify-content: center; flex-wrap: wrap; }
+.page-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-family: var(--font-ui); font-size: 0.8rem; transition: all 0.15s; }
+.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.page-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.page-btn:disabled { opacity: 0.4; cursor: default; }
+.page-info { color: var(--text-muted); font-size: 0.78rem; margin-left: 12px; }
+
+/* ── Sortable Column Headers ────────────────────── */
+
+.sortable { cursor: pointer; user-select: none; }
+.sortable:hover { color: var(--accent); }
+.sort-icon { font-size: 0.7rem; margin-left: 4px; }

@@ -44,6 +44,7 @@ export function showAddProductModal() {
     title: `Add New ${config.label('product')}`,
     fields: [
       { id: 'add-p-name', label: `${config.label('Product')} Name`, type: 'text', placeholder: 'e.g. Widget A', required: true },
+      { id: 'add-p-photo', label: 'Photo', type: 'file', accept: 'image/*' },
       { id: 'add-p-qty', label: 'Starting Quantity', type: 'number', placeholder: '0', min: 0 },
       { id: 'add-p-note', label: 'Note (optional)', type: 'text', placeholder: 'e.g. seasonal, bestseller' },
       { id: 'add-p-sell', label: 'Sell Price ($)', type: 'number', placeholder: '0.00', min: 0, step: '0.01' },
@@ -71,6 +72,18 @@ export function showAddProductModal() {
         inProduction: vals['add-p-status'] === 'production',
         locationId: vals['add-p-loc'] ? parseInt(vals['add-p-loc']) : null,
       });
+      // Upload photo if selected
+      const photoFile = vals['add-p-photo'];
+      if (photoFile) {
+        try {
+          const { uploadPhoto } = await import('../services/photos.js');
+          const photoPath = await uploadPhoto(photoFile);
+          await products.updateProduct(item.id, { photoId: photoPath });
+        } catch (err) {
+          console.warn('Photo upload failed:', err);
+          toast('Product added but photo upload failed', 'warning');
+        }
+      }
       if (qty > 0) {
         await history.addEntry({
           itemType: 'product', itemId: item.id, itemName: name,

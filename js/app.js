@@ -19,6 +19,7 @@ import { renderHeader } from './ui/header.js';
 import { renderAlerts } from './ui/alerts.js';
 import { renderProductGrid, renderMaterialGrid } from './ui/grid.js';
 import { renderHistoryTable } from './ui/tables.js';
+import { renderPagination, paginate } from './ui/pagination.js';
 import { showFormModal, escHtml, showConfirmModal, showPromptModal } from './ui/modals.js';
 import { renderTermsPage, renderPrivacyPage } from './ui/pages/legal.js';
 import { renderHelpPage } from './ui/pages/help.js';
@@ -43,6 +44,7 @@ import { renderPricingPage, renderBillingSection, createCheckoutSession, openBil
 import { connectEtsy, disconnectEtsy, syncEtsyOrders, connectShopify, disconnectShopify, syncShopifyOrders, getChannelStatus, simulateEtsyWebhook, simulateShopifyWebhook } from './services/ecommerce.js';
 import { getShippingRates, createShippingLabel } from './services/shipping.js';
 import { renderSalesChannelsSection } from './ui/ecommerce.js';
+import { pushUndo, popUndo, canUndo } from './services/undo.js';
 import { startTutorial } from './ui/tutorial.js';
 import { showLandingPage, showPasswordResetPage } from './ui/landing.js';
 import {
@@ -105,6 +107,8 @@ let materialSearch = '';
 let supplierSearch = '';
 let orderSearch = '';
 let historyFilter = 'all';
+let historyPage = 1;
+let historySort = { field: 'createdAt', dir: 'desc' };
 let currentUserRole = 'owner'; // default until loaded
 let deferredPrompt = null;
 
@@ -434,8 +438,100 @@ function renderMaterialsPage() {
 }
 
 function renderHistoryPage() {
-  const entries = history.filterHistory({ type: historyFilter });
-  renderHistoryTable('history-body', 'history-empty', entries);
+  let entries = history.filterHistory({ type: historyFilter });
+
+  // Sort entries
+  entries = [...entries].sort((a, b) => {
+    let aVal, bVal;
+    switch (historySort.field) {
+      case 'createdAt':
+        aVal = new Date(a.createdAt).getTime();
+        bVal = new Date(b.createdAt).getTime();
+        break;
+      case 'itemName':
+        aVal = (a.itemName || '').toLowerCase();
+        bVal = (b.itemName || '').toLowerCase();
+        return historySort.dir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      case 'quantityChange':
+        aVal = a.quantityChange ?? 0;
+        bVal = b.quantityChange ?? 0;
+        break;
+      case 'newQuantity':
+        aVal = a.newQuantity ?? 0;
+        bVal = b.newQuantity ?? 0;
+        break;
+      case 'note':
+        aVal = (a.note || '').toLowerCase();
+        bVal = (b.note || '').toLowerCase();
+        return historySort.dir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      default:
+        aVal = new Date(a.createdAt).getTime();
+        bVal = new Date(b.createdAt).getTime();
+    }
+    return historySort.dir === 'asc' ? aVal - bVal : bVal - aVal;
+  });
+
+  const totalItems = entries.length;
+
+  // Clamp page
+  const totalPages = Math.max(1, Math.ceil(totalItems / 50));
+  if (historyPage > totalPages) historyPage = totalPages;
+
+  // Render sortable headers
+  const sortIcon = (field) => historySort.field === field ? (historySort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  const thead = document.querySelector('#page-history .history-table thead tr');
+  if (thead) {
+    thead.innerHTML = `
+      <th class="sortable" data-sort="createdAt">Date<span class="sort-icon">${sortIcon('createdAt')}</span></th>
+      <th class="sortable" data-sort="itemName">Item / Event<span class="sort-icon">${sortIcon('itemName')}</span></th>
+      <th class="sortable" data-sort="quantityChange">Change<span class="sort-icon">${sortIcon('quantityChange')}</span></th>
+      <th class="sortable" data-sort="newQuantity">New Qty<span class="sort-icon">${sortIcon('newQuantity')}</span></th>
+      <th class="sortable" data-sort="note">Note<span class="sort-icon">${sortIcon('note')}</span></th>
+    `;
+  }
+
+  // Paginate
+  const pageEntries = paginate(entries, historyPage, 50);
+  renderHistoryTable('history-body', 'history-empty', pageEntries);
+
+  // Render pagination after table
+  const wrap = document.querySelector('#page-history .history-table-wrap');
+  if (wrap) {
+    // Remove old pagination
+    const oldPag = wrap.parentElement.querySelector('.pagination');
+    if (oldPag) oldPag.remove();
+
+    const pagHtml = renderPagination({ totalItems, currentPage: historyPage, pageSize: 50 });
+    if (pagHtml) wrap.insertAdjacentHTML('afterend', pagHtml);
+
+    // Bind pagination clicks
+    const pagEl = wrap.parentElement.querySelector('.pagination');
+    if (pagEl) {
+      pagEl.onclick = (e) => {
+        const btn = e.target.closest('[data-page]');
+        if (!btn || btn.disabled) return;
+        historyPage = parseInt(btn.dataset.page, 10);
+        renderHistoryPage();
+      };
+    }
+  }
+
+  // Bind sortable header clicks
+  if (thead) {
+    thead.onclick = (e) => {
+      const th = e.target.closest('.sortable');
+      if (!th) return;
+      const field = th.dataset.sort;
+      if (historySort.field === field) {
+        historySort.dir = historySort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        historySort.field = field;
+        historySort.dir = field === 'createdAt' ? 'desc' : 'asc';
+      }
+      historyPage = 1;
+      renderHistoryPage();
+    };
+  }
 }
 
 function renderDashboardPage() {
@@ -1583,6 +1679,7 @@ function setupEventListeners() {
   document.querySelectorAll('[data-hfilter]').forEach(btn => {
     btn.addEventListener('click', () => {
       historyFilter = btn.dataset.hfilter;
+      historyPage = 1;
       document.querySelectorAll('[data-hfilter]').forEach(b => b.classList.toggle('active', b.dataset.hfilter === historyFilter));
       renderHistoryPage();
     });
@@ -1616,6 +1713,13 @@ async function handleMainClick(e) {
   const id = parseInt(btn.dataset.id);
 
   switch (action) {
+    case 'undo':
+      if (canUndo()) {
+        await popUndo();
+        renderAll();
+      }
+      break;
+
     case 'restock-product':
       showRestockProductModal(id);
       break;
@@ -1648,12 +1752,14 @@ async function handleMainClick(e) {
       const item = products.getProductById(id);
       if (!item) return;
       if (!await showConfirmModal({ title: 'Remove Item', message: `Remove "${item.name}" from inventory?`, confirmLabel: 'Remove', danger: true })) return;
+      const snapshot = { ...item };
       // Clean up references: nullify recipe productId links
       const linkedRecipes = recipes.getAllRecipes().filter(r => r.productId === id);
       for (const r of linkedRecipes) {
         await recipes.updateRecipe(r.id, { productId: null });
       }
       await products.deleteProduct(id);
+      pushUndo({ label: `Delete ${item.name}`, undo: async () => { await products.addProduct(snapshot); } });
       renderInventoryPage();
       renderHeader();
       renderAlerts();
@@ -1739,7 +1845,9 @@ async function handleMainClick(e) {
       for (const m of linkedMats) {
         await materials.updateMaterial(m.id, { supplierId: null });
       }
+      const supSnapshot = { ...sup };
       await suppliers.deleteSupplier(id);
+      pushUndo({ label: `Delete ${sup.name}`, undo: async () => { await suppliers.addSupplier(supSnapshot); } });
       renderSuppliersPage();
       toast(`${sup.name} removed`, 'info');
       break;
@@ -2428,7 +2536,9 @@ async function handleMainClick(e) {
       for (const s of linkedSales) {
         await sales.updateSale(s.id, { customerId: null });
       }
+      const custSnapshot = { ...cust };
       await customers.deleteCustomer(id);
+      pushUndo({ label: `Delete ${cust.name}`, undo: async () => { await customers.addCustomer(custSnapshot); } });
       if (selectedCustomerId === id) selectedCustomerId = null;
       renderCustomersPage();
       toast(`${cust.name} removed`, 'info');
