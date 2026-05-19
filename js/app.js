@@ -283,7 +283,7 @@ async function loadApp() {
     const localProfile = config.getProfile();
     if (localProfile.name !== bizProfile.name) cloudUpdates.name = bizProfile.name;
     if (localProfile.type !== (bizProfile.type || 'general')) cloudUpdates.type = bizProfile.type || localProfile.type;
-    if (bizProfile.theme && JSON.stringify(bizProfile.theme) !== JSON.stringify(localProfile.theme)) cloudUpdates.theme = bizProfile.theme;
+    if (bizProfile.theme && Object.keys(bizProfile.theme).length > 0 && JSON.stringify(bizProfile.theme) !== JSON.stringify(localProfile.theme)) cloudUpdates.theme = bizProfile.theme;
     if (bizProfile.globalThresholds && JSON.stringify(bizProfile.globalThresholds) !== JSON.stringify(localProfile.globalThresholds)) cloudUpdates.globalThresholds = bizProfile.globalThresholds;
     if (bizProfile.shipFromAddress) cloudUpdates.shipFromAddress = bizProfile.shipFromAddress;
     if (Object.keys(cloudUpdates).length > 0) {
