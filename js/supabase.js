@@ -19,7 +19,6 @@ export function initSupabase() {
   client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       persistSession: true,
-      storageKey: 'clearcost-auth',
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },
