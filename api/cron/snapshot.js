@@ -2,7 +2,7 @@ const { getServiceClient } = require('../../_lib/auth');
 
 module.exports = async (req, res) => {
   // Optional: verify cron secret for automated calls
-  const cronSecret = process.env.CRON_SECRET;
+  const cronSecret = (process.env.CRON_SECRET || '').trim();
   if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
     // If no cron secret configured, allow all calls; otherwise verify
     if (req.headers.authorization && !req.headers.authorization.startsWith('Bearer ey')) {

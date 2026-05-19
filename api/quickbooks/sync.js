@@ -11,11 +11,11 @@ const {
   getQBClient, qbPromise, setIdMapping, getQboId, setLastSync, ensureValidToken,
 } = require('../_lib/quickbooks-client');
 
-const QBO_ENV = process.env.QUICKBOOKS_ENV || 'sandbox';
+const QBO_ENV = (process.env.QUICKBOOKS_ENV || '').trim() || 'sandbox';
 const BASE_URL = QBO_ENV === 'production'
   ? 'https://quickbooks.api.intuit.com'
   : 'https://sandbox-quickbooks.api.intuit.com';
-const SITE_URL = process.env.SITE_URL || '';
+const SITE_URL = (process.env.SITE_URL || '').trim();
 
 function setCors(res) {
   if (SITE_URL) {

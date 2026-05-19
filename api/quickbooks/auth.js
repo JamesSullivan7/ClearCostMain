@@ -14,7 +14,7 @@ const {
   storeTokens, getStoredTokens, getQBClient, qbPromise, getLastSync,
 } = require('../_lib/quickbooks-client');
 
-const SITE_URL = process.env.SITE_URL || '';
+const SITE_URL = (process.env.SITE_URL || '').trim();
 
 function setCors(res) {
   if (SITE_URL) {

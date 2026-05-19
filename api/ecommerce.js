@@ -18,8 +18,8 @@ const { kv } = require('@vercel/kv');
 const crypto = require('crypto');
 const { authenticate } = require('./_lib/auth');
 
-const SITE_URL = process.env.SITE_URL || 'https://clearcostinventory.com';
-const stateSecret = process.env.OAUTH_STATE_SECRET || 'dev-secret';
+const SITE_URL = (process.env.SITE_URL || '').trim() || 'https://clearcostinventory.com';
+const stateSecret = (process.env.OAUTH_STATE_SECRET || '').trim() || 'dev-secret';
 
 module.exports = async (req, res) => {
   // CORS headers
@@ -103,8 +103,8 @@ async function handleEtsyConnect(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.ETSY_API_KEY;
-  const redirectUri = process.env.ETSY_REDIRECT_URI || `${req.headers.origin || 'https://localhost'}/api/ecommerce?action=etsy-callback`;
+  const apiKey = (process.env.ETSY_API_KEY || '').trim();
+  const redirectUri = (process.env.ETSY_REDIRECT_URI || '').trim() || `${req.headers.origin || 'https://localhost'}/api/ecommerce?action=etsy-callback`;
 
   if (!apiKey) {
     // Sandbox mode — simulate OAuth redirect
@@ -152,8 +152,8 @@ async function handleEtsyCallback(req, res) {
   }
 
   try {
-    const apiKey = process.env.ETSY_API_KEY;
-    const redirectUri = process.env.ETSY_REDIRECT_URI || `${req.headers.origin || 'https://localhost'}/api/ecommerce?action=etsy-callback`;
+    const apiKey = (process.env.ETSY_API_KEY || '').trim();
+    const redirectUri = (process.env.ETSY_REDIRECT_URI || '').trim() || `${req.headers.origin || 'https://localhost'}/api/ecommerce?action=etsy-callback`;
 
     // Verify HMAC-signed state
     const [payloadB64, hmac] = (state || '').split('.');
@@ -303,7 +303,7 @@ async function handleEtsySync(req, res) {
 
   // Real Etsy sync
   try {
-    const apiKey = process.env.ETSY_API_KEY;
+    const apiKey = (process.env.ETSY_API_KEY || '').trim();
     const receiptsRes = await fetch('https://openapi.etsy.com/v3/application/shops/me/receipts?limit=25&sort_on=created&sort_order=desc', {
       headers: { Authorization: `Bearer ${token.access_token}`, 'x-api-key': apiKey },
     });
@@ -378,7 +378,7 @@ async function handleShopifyConnect(req, res) {
   }
 
   const shopDomain = req.body?.shopDomain;
-  const apiKey = process.env.SHOPIFY_API_KEY;
+  const apiKey = (process.env.SHOPIFY_API_KEY || '').trim();
   const bizId = await getAuthenticatedBusinessId(req);
 
   if (!apiKey) {
@@ -431,8 +431,8 @@ async function handleShopifyCallback(req, res) {
   }
 
   try {
-    const apiKey = process.env.SHOPIFY_API_KEY;
-    const apiSecret = process.env.SHOPIFY_API_SECRET;
+    const apiKey = (process.env.SHOPIFY_API_KEY || '').trim();
+    const apiSecret = (process.env.SHOPIFY_API_SECRET || '').trim();
 
     // Verify HMAC-signed state
     const [payloadB64, hmac] = (state || '').split('.');
@@ -664,7 +664,7 @@ async function handleEtsyWebhook(req, res) {
   console.log('Etsy webhook received:', JSON.stringify(event).slice(0, 500));
 
   // In sandbox / missing API keys, just acknowledge
-  if (!process.env.ETSY_API_KEY) {
+  if (!(process.env.ETSY_API_KEY || '').trim()) {
     console.log('Etsy webhook (sandbox): event logged, no processing.');
     return res.status(200).json({ received: true, sandbox: true });
   }
@@ -695,7 +695,7 @@ async function handleEtsyWebhook(req, res) {
       return res.status(200).json({ received: true, skipped: 'no_receipt_id' });
     }
 
-    const apiKey = process.env.ETSY_API_KEY;
+    const apiKey = (process.env.ETSY_API_KEY || '').trim();
     const receiptRes = await fetch(`https://openapi.etsy.com/v3/application/shops/${shopId}/receipts/${receiptId}`, {
       headers: { Authorization: `Bearer ${token.access_token}`, 'x-api-key': apiKey },
     });
@@ -729,7 +729,7 @@ async function handleShopifyWebhook(req, res) {
   console.log('Shopify webhook received:', JSON.stringify(order).slice(0, 500));
 
   // In sandbox / missing API keys, just acknowledge
-  if (!process.env.SHOPIFY_API_SECRET) {
+  if (!(process.env.SHOPIFY_API_SECRET || '').trim()) {
     console.log('Shopify webhook (sandbox): event logged, no processing.');
     return res.status(200).json({ received: true, sandbox: true });
   }
@@ -742,7 +742,7 @@ async function handleShopifyWebhook(req, res) {
   }
   const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
   const computed = crypto
-    .createHmac('sha256', process.env.SHOPIFY_API_SECRET)
+    .createHmac('sha256', (process.env.SHOPIFY_API_SECRET || '').trim())
     .update(rawBody, 'utf8')
     .digest('base64');
   if (computed !== hmacHeader) {
@@ -791,7 +791,7 @@ async function handleShippingRates(req, res) {
   await getAuthenticatedBusinessId(req);
   const { from_address, to_address, parcel_weight, parcel_dimensions } = req.body || {};
 
-  if (!process.env.EASYPOST_API_KEY) {
+  if (!(process.env.EASYPOST_API_KEY || '').trim()) {
     // Mock shipping rates for sandbox/demo mode
     return res.status(200).json({
       rates: [
@@ -807,7 +807,7 @@ async function handleShippingRates(req, res) {
 
   // Real EasyPost integration
   try {
-    const easypostKey = process.env.EASYPOST_API_KEY;
+    const easypostKey = (process.env.EASYPOST_API_KEY || '').trim();
     const shipmentRes = await fetch('https://api.easypost.com/v2/shipments', {
       method: 'POST',
       headers: {
@@ -855,7 +855,7 @@ async function handleShippingLabel(req, res) {
   await getAuthenticatedBusinessId(req);
   const { rate_id, shipment_id, from_address, to_address } = req.body || {};
 
-  if (!process.env.EASYPOST_API_KEY) {
+  if (!(process.env.EASYPOST_API_KEY || '').trim()) {
     // Mock label creation for sandbox/demo
     const mockTracking = 'MOCK' + Date.now().toString(36).toUpperCase();
     return res.status(200).json({
@@ -871,7 +871,7 @@ async function handleShippingLabel(req, res) {
 
   // Real EasyPost label purchase
   try {
-    const easypostKey = process.env.EASYPOST_API_KEY;
+    const easypostKey = (process.env.EASYPOST_API_KEY || '').trim();
     const buyRes = await fetch(`https://api.easypost.com/v2/shipments/${shipment_id}/buy`, {
       method: 'POST',
       headers: {
@@ -963,8 +963,8 @@ async function handleStatus(req, res) {
     etsy,
     shopify,
     shipping: {
-      provider: process.env.EASYPOST_API_KEY ? 'easypost' : 'mock',
-      configured: !!process.env.EASYPOST_API_KEY,
+      provider: (process.env.EASYPOST_API_KEY || '').trim() ? 'easypost' : 'mock',
+      configured: !!(process.env.EASYPOST_API_KEY || '').trim(),
     },
   });
 }

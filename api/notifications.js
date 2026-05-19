@@ -7,7 +7,7 @@ const { authenticate, getServiceClient } = require('./_lib/auth');
 
 module.exports = async (req, res) => {
   // CORS headers
-  const SITE_URL = process.env.SITE_URL || 'https://clearcostinventory.com';
+  const SITE_URL = (process.env.SITE_URL || '').trim() || 'https://clearcostinventory.com';
   res.setHeader('Access-Control-Allow-Origin', SITE_URL);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
         }
 
         // If no Resend API key, return data without sending
-        if (!process.env.RESEND_API_KEY) {
+        if (!(process.env.RESEND_API_KEY || '').trim()) {
           return res.status(200).json({
             sent: false,
             reason: 'RESEND_API_KEY not configured',
@@ -76,11 +76,11 @@ module.exports = async (req, res) => {
         const emailRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Authorization': `Bearer ${(process.env.RESEND_API_KEY || '').trim()}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: process.env.RESEND_FROM_EMAIL || 'ClearCost <notifications@resend.dev>',
+            from: (process.env.RESEND_FROM_EMAIL || '').trim() || 'ClearCost <notifications@resend.dev>',
             to: [ownerUser.email],
             subject: 'ClearCost: Low Stock Alert',
             html: htmlBody,

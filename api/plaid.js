@@ -12,7 +12,7 @@ const { kv } = require('@vercel/kv');
 const { authenticate } = require('./_lib/auth');
 
 module.exports = async (req, res) => {
-  const SITE_URL = process.env.SITE_URL || 'https://clearcostinventory.com';
+  const SITE_URL = (process.env.SITE_URL || '').trim() || 'https://clearcostinventory.com';
   res.setHeader('Access-Control-Allow-Origin', SITE_URL);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');

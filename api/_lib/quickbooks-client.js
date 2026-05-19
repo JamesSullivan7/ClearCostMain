@@ -4,10 +4,10 @@
 const QuickBooks = require('node-quickbooks');
 const { kv } = require('@vercel/kv');
 
-const QBO_ENV = process.env.QUICKBOOKS_ENV || 'sandbox';
-const CLIENT_ID = process.env.QUICKBOOKS_CLIENT_ID;
-const CLIENT_SECRET = process.env.QUICKBOOKS_CLIENT_SECRET;
-const REDIRECT_URI = process.env.QUICKBOOKS_REDIRECT_URI;
+const QBO_ENV = (process.env.QUICKBOOKS_ENV || '').trim() || 'sandbox';
+const CLIENT_ID = (process.env.QUICKBOOKS_CLIENT_ID || '').trim();
+const CLIENT_SECRET = (process.env.QUICKBOOKS_CLIENT_SECRET || '').trim();
+const REDIRECT_URI = (process.env.QUICKBOOKS_REDIRECT_URI || '').trim();
 
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
 const AUTH_URL = 'https://appcenter.intuit.com/connect/oauth2';

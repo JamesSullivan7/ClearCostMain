@@ -8,15 +8,15 @@
 const Stripe = require('stripe');
 const { authenticate, getServiceClient } = require('./_lib/auth');
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder');
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
-const SITE_URL = process.env.SITE_URL || 'https://clearcostinventory.com';
+const stripe = new Stripe((process.env.STRIPE_SECRET_KEY || '').trim() || 'sk_test_placeholder');
+const WEBHOOK_SECRET = (process.env.STRIPE_WEBHOOK_SECRET || '').trim();
+const SITE_URL = (process.env.SITE_URL || '').trim() || 'https://clearcostinventory.com';
 
 // Price IDs (set these after creating products in Stripe Dashboard)
 const PRICE_IDS = {
-  starter: process.env.STRIPE_PRICE_STARTER || 'price_starter_placeholder',
-  pro: process.env.STRIPE_PRICE_PRO || 'price_pro_placeholder',
-  business: process.env.STRIPE_PRICE_BUSINESS || 'price_business_placeholder',
+  starter: (process.env.STRIPE_PRICE_STARTER || '').trim() || 'price_starter_placeholder',
+  pro: (process.env.STRIPE_PRICE_PRO || '').trim() || 'price_pro_placeholder',
+  business: (process.env.STRIPE_PRICE_BUSINESS || '').trim() || 'price_business_placeholder',
 };
 
 module.exports = async (req, res) => {

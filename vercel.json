@@ -1,10 +1,25 @@
 {
   "crons": [{ "path": "/api/cron/snapshot", "schedule": "0 6 * * *" }],
+  "redirects": [
+    { "source": "/:path*", "has": [{ "type": "host", "value": "www.clearcostinventory.com" }], "destination": "https://clearcostinventory.com/:path*", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
+    {
+      "source": "/js/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/css/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [
