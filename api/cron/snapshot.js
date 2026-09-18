@@ -1,4 +1,4 @@
-const { getServiceClient } = require('../../_lib/auth');
+const { getServiceClient } = require('../_lib/auth');
 
 module.exports = async (req, res) => {
   // This handler uses the service-role client below, which bypasses RLS and
