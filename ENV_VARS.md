@@ -69,7 +69,7 @@ All env vars are set in the Vercel project settings.
 | Variable | Description |
 |----------|-------------|
 | `OAUTH_STATE_SECRET` | Secret for HMAC-signing Etsy/Shopify OAuth state params (any random string) |
-| `CRON_SECRET` | Optional secret for authenticating Vercel Cron Job calls |
+| `CRON_SECRET` | **Required.** Authenticates the daily `/api/cron/snapshot` call. Vercel sends it as `Authorization: Bearer $CRON_SECRET` on scheduled invocations. Without it the endpoint refuses every request and no daily snapshots are written. |
 
 ## Vercel KV
 

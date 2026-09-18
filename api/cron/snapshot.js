@@ -1,13 +1,14 @@
 const { getServiceClient } = require('../../_lib/auth');
 
 module.exports = async (req, res) => {
-  // Optional: verify cron secret for automated calls
+  // This handler uses the service-role client below, which bypasses RLS and
+  // touches every business, so it must never run for an anonymous caller.
+  // Vercel sends this header on scheduled invocations when CRON_SECRET is set
+  // on the project. No secret means no way to tell a cron from a stranger, so
+  // refuse rather than allow.
   const cronSecret = (process.env.CRON_SECRET || '').trim();
-  if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
-    // If no cron secret configured, allow all calls; otherwise verify
-    if (req.headers.authorization && !req.headers.authorization.startsWith('Bearer ey')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  if (!cronSecret || req.headers.authorization !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const supabase = getServiceClient();
