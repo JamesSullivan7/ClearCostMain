@@ -6,3 +6,8 @@ node_modules/
 # force deploy
 
 .vercel
+.env*.local
+
+# Local demo seeding: hardcodes a password and resets a real account.
+# This repo is public, so it must never be committed.
+seed-dailydose.js
