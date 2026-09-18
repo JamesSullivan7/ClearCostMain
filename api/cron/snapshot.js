@@ -14,8 +14,13 @@ module.exports = async (req, res) => {
   const supabase = getServiceClient();
   const today = new Date().toISOString().split('T')[0];
 
-  // Get all businesses
-  const { data: businesses } = await supabase.from('businesses').select('id');
+  // Get all businesses. The error is checked on purpose: ignoring it turned an
+  // unreachable database into {"success":true,"created":0}, which reads as
+  // "nothing to do" rather than "nothing worked".
+  const { data: businesses, error: listError } = await supabase.from('businesses').select('id');
+  if (listError) {
+    return res.status(500).json({ error: `Could not list businesses: ${listError.message}` });
+  }
 
   let created = 0;
   let skipped = 0;
